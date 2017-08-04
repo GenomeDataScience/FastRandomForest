@@ -38,6 +38,14 @@ import java.util.Random;
  * @author Fran Supek (fran.supek[AT]irb.hr)
  */
 public class DataCache {
+  /** The data in the form of Instances, used for the weka version of the algorithm */
+  protected FastInstances instances;
+
+  /** Original data */
+  protected Instances origInstances;
+
+  /** Array with the indices of the selected attributes of the instances */
+  protected int[] selectedAttributes;
 
   /** The dataset, first indexed by attribute, then by instance. */
   protected final float[][] vals;
@@ -107,6 +115,9 @@ public class DataCache {
     numAttributes = origData.numAttributes();
     numClasses = origData.numClasses();
     numInstances = origData.numInstances();
+    // new
+    instances = new FastInstances(origData);
+    origInstances = instances;
 
     attNumVals = new int[origData.numAttributes()];
     for (int i = 0; i < attNumVals.length; i++) {
@@ -192,6 +203,9 @@ public class DataCache {
    * @param origData
    */
   public DataCache(DataCache origData) {
+    // New
+    instances = origData.instances.copy();
+    origInstances = origData.origInstances;
 
     classIndex = origData.classIndex;       // copied
     numAttributes = origData.numAttributes; // copied
@@ -229,10 +243,13 @@ public class DataCache {
    * @return a new DataCache - consult "DataCache(DataCache origData)"
    * constructor to see what's deep / shallow copied
    */
-  public DataCache resample(int bagSize, Random random) {
-
-    DataCache result =
-            new DataCache(this); // makes shallow copy of vals matrix
+  public DataCache resample(int bagSize, Random random, int nAttrVirtual) {
+    if (nAttrVirtual >= numAttributes) {
+      throw new ValueException("nAttr must be less than numAttributes");
+    }
+    // makes shallow copy of vals matrix
+    // makes a deep copy of each instance, but with a shallow copy of its attributes
+    DataCache result = new DataCache(this);
 
     double[] newWeights = new double[ numInstances ]; // all 0.0 by default
     
@@ -240,14 +257,25 @@ public class DataCache {
       
       int curIdx = random.nextInt( numInstances );
       newWeights[curIdx] += instWeights[curIdx];
+      instances.get(curIdx).setWeight(newWeights[curIdx]);
       if ( !result.inBag[curIdx] ) {
         result.numInBag++;
         result.inBag[curIdx] = true;
       }
-      
     }
-
     result.instWeights = newWeights;
+
+    // select the subset of features
+    result.selectedAttributes = new int[nAttrVirtual];
+    int[] permIndices = FastRfUtils.randomPermutation(numAttributes, random);
+    for (int i = 0; i < nAttrVirtual; ++i) {
+      int a = permIndices[i];
+      if (a == classIndex)
+        // swap the classIndex with the first element not included
+        a = permIndices[nAttrVirtual];
+
+      result.selectedAttributes[i] = a; // it will never have the attribute class
+    }
 
     // we also need to fill sortedIndices by peeking into the inBag array, but
     // this can be postponed until the tree training begins
@@ -286,23 +314,10 @@ public class DataCache {
   }
 
   /** Invoked only when tree is trained. */
-  // nAttr <= numAttributes - 1
-  protected void createInBagSortedIndicesNew(int nAttr) {
-    if (nAttr >= numAttributes) {
-      throw new ValueException("nAttr must be less than numAttributes");
-    }
-
-    int[] permIndices = FastRfUtils.randomPermutation(numAttributes, reusableRandomGenerator);
+  protected void createInBagSortedIndicesNew() {
 
     int[][] newSortedIndices = new int[ numAttributes ][ ];
-
-    for (int i = 0; i < nAttr; ++i) {
-      int a = permIndices[i];
-
-      if (a == classIndex)
-        // swap the classIndex with the first element not included
-        a = permIndices[nAttr];
-
+    for (int a : selectedAttributes) {
       newSortedIndices[a] = new int[this.numInBag];
 
       int inBagIdx = 0;

@@ -1402,6 +1402,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
          * @param depth the current depth
          * @throws Exception if generation fails
          */
+        // Modifying the attIndicesWindow I can choose which attributes I want to discard
         protected void buildTree(Instances data, double[] classProbs,
                                  int[] attIndicesWindow, double totalWeight, Random random, int depth,
                                  double minVariance) throws Exception {

@@ -43,11 +43,20 @@ public class FastInstances extends Instances {
      * Takes the instances indicated by an array of indices. The other original instances are forgotten.
      * @param listInst List of indices that refer to instances of the m_Instances ArrayList
      */
-    public void takeInstances(Instance[] listInst, int start, int end) {
+    public void takeInstances(int[] listInst, int start, int end) {
         oldInstances = m_Instances;
         temp_m_Instances = new ArrayList<>(end - start + 1);
         for (int i = start; i <= end; ++i) {
-            temp_m_Instances.add(listInst[i]);
+            temp_m_Instances.add(m_Instances.get(listInst[i]));
+        }
+        m_Instances = temp_m_Instances;
+    }
+
+    public void takeInstances(boolean[] listInst, int numInBag) {
+        oldInstances = m_Instances;
+        temp_m_Instances = new ArrayList<>(numInBag);
+        for (int i = 0; i < listInst.length; ++i) {
+            if (listInst[i]) temp_m_Instances.add(m_Instances.get(i));
         }
         m_Instances = temp_m_Instances;
     }
