@@ -54,7 +54,7 @@ class FastRandomTree
   /** for serialization */
   static final long serialVersionUID = 8934314652175299375L;
 
-  public static final float cnst = 2;
+  public static final double cnst = 0.5;
   
   /** The subtrees appended to this tree (node). */
   protected AbstractClassifier[] m_Successors;
@@ -222,7 +222,7 @@ class FastRandomTree
     else {
       MyRandomTree auxTree = new MyRandomTree();
       auxTree.setNumFolds(0);
-      // Take only the instances that belong to this node. Drop the others.
+      // Take only the instances that are in bag.
       data.instances.takeInstances(data.inBag, data.numInBag);
       try {
         auxTree.buildTree(data.instances, classProbs, data.selectedAttributes, data.reusableRandomGenerator, getKValue());
@@ -597,7 +597,7 @@ class FastRandomTree
       int belowTheSplitStartsAt = splitDataNew(  m_Attribute, m_SplitPoint, sortedIndices, startAt, endAt );
       
 
-      m_Successors = new FastRandomTree[dist.length];  // dist.length now always == 2
+      m_Successors = new AbstractClassifier[dist.length];  // dist.length now always == 2
       for (int i = 0; i < dist.length; i++) {
         // number of instances of the successor that will be created
         int nInstSucc = i == 0 ? belowTheSplitStartsAt - startAt : endAt - belowTheSplitStartsAt + 1;
@@ -945,10 +945,7 @@ class FastRandomTree
     }  // ============================================ end if nominal / numeric
 
     
-    for (int a = 0; a < data.numAttributes; a++) { // xxxxxxxxxx attr by attr
-      
-      if (a == data.classIndex || sortedIndices[a] == null)
-        continue;
+    for (int a : data.selectedAttributes) { // xxxxxxxxxx attr by attr
 
       // the first index of the sortedIndices in the above branch, and the first index in the below
       int startAbove = 0, startBelow = num[0]; // always only 2 sub-branches, remember where second starts

@@ -257,7 +257,7 @@ public class DataCache {
       
       int curIdx = random.nextInt( numInstances );
       newWeights[curIdx] += instWeights[curIdx];
-      instances.get(curIdx).setWeight(newWeights[curIdx]);
+      result.instances.get(curIdx).setWeight(newWeights[curIdx]);
       if ( !result.inBag[curIdx] ) {
         result.numInBag++;
         result.inBag[curIdx] = true;
