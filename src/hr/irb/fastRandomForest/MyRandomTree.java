@@ -21,6 +21,7 @@
 
 package hr.irb.fastRandomForest;
 
+import jdk.internal.util.xml.impl.ReaderUTF8;
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.core.*;
@@ -690,14 +691,14 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
         return result;
     }
 
-    public void buildTree(Instances data, double[] classProbs, int[] totalAttIndicesWindow, Random rand, int k) throws Exception {
+    public void buildTree(DataCache dataCache, Integer[] instIndices, double[] classProbs, int[] totalAttIndicesWindow, Random rand, int k) throws Exception {
         m_KValue = k;
         // Make sure K value is in range
-        if (m_KValue > data.numAttributes() - 1) {
-            m_KValue = data.numAttributes() - 1;
+        if (m_KValue > dataCache.numAttributes - 1) {
+            m_KValue = dataCache.numAttributes - 1;
         }
         if (m_KValue < 1) {
-            m_KValue = (int) Utils.log2(data.numAttributes() - 1) + 1;
+            m_KValue = (int) Utils.log2(dataCache.numAttributes - 1) + 1;
         }
 
         double totalWeight = 0.0;
@@ -705,111 +706,117 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             totalWeight += w;
         }
 
-        this.m_Tree = new MyRandomTree.Tree();
-//        this.m_Info = new Instances(data, 0);
-        this.m_Info = data; // no need for a copy (data is already copied)
-        this.m_Tree.buildTree(data, classProbs, totalAttIndicesWindow, totalWeight, rand, 0, 1e-2);
+        this.m_Info = dataCache.instances; // cal fer-ne una copia??
+        this.m_Tree = new MyRandomTree.Tree(dataCache, instIndices);
+        this.m_Tree.buildTree(classProbs, totalAttIndicesWindow, totalWeight, rand, 0, 1e-2);
     }
 
-    /**
-     * Builds classifier.
-     *
-     * @param data the data to train with
-     * @throws Exception if something goes wrong or the data doesn't fit
-     */
     @Override
-    public void buildClassifier(Instances data) throws Exception {
+    public void buildClassifier(Instances data) throws Exception {}
 
-        if (m_computeImpurityDecreases) {
-            m_impurityDecreasees = new double[data.numAttributes()][2];
-        }
+//    /**
+//     * Builds classifier.
+//     *
+//     * @param data the data to train with
+//     * @throws Exception if something goes wrong or the data doesn't fit
+//     */
+//    @Override
+//    public void buildClassifier(Instances data) throws Exception {
+//
+//        if (m_computeImpurityDecreases) {
+//            m_impurityDecreasees = new double[dataCache.numAttributes][2];
+//        }
+//
+//        // Make sure K value is in range
+//        if (m_KValue > dataCache.numAttributes - 1) {
+//            m_KValue = dataCache.numAttributes - 1;
+//        }
+//        if (m_KValue < 1) {
+//            m_KValue = (int) Utils.log2(dataCache.numAttributes - 1) + 1;
+//        }
+//
+//        // can classifier handle the data?
+//        getCapabilities().testWithFail(data);
+//
+//        // remove instances with missing class
+//        data = new Instances(data);
+//        data.deleteWithMissingClass();
+//
+//        // only class? -> build ZeroR model
+//        if (dataCache.numAttributes == 1) {
+//            System.err
+//                    .println("Cannot build model (only class attribute present in data!), "
+//                            + "using ZeroR model instead!");
+//            m_zeroR = new weka.classifiers.rules.ZeroR();
+//            m_zeroR.buildClassifier(data);
+//            return;
+//        } else {
+//            m_zeroR = null;
+//        }
+//
+//        // Figure out appropriate datasets
+//        Instances train = null;
+//        Instances backfit = null;
+//        Random rand = data.getRandomNumberGenerator(m_randomSeed);
+//        if (m_NumFolds <= 0) {
+//            train = data;
+//        } else {
+//            data.randomize(rand);
+//            data.stratify(m_NumFolds);
+//            train = data.trainCV(m_NumFolds, 1, rand);
+//            backfit = data.testCV(m_NumFolds, 1);
+//        }
+//
+//        // Create the attribute indices window
+//        int[] attIndicesWindow = new int[dataCache.numAttributes - 1];
+//        int j = 0;
+//        for (int i = 0; i < attIndicesWindow.length; i++) {
+//            if (j == data.classIndex()) {
+//                j++; // do not include the class
+//            }
+//            attIndicesWindow[i] = j++;
+//        }
+//
+//        double totalWeight = 0;
+//        double totalSumSquared = 0;
+//
+//        // Compute initial class counts
+//        double[] classProbs = new double[train.numClasses()];
+//        for (int i = 0; i < train.numInstances(); i++) {
+//            Instance inst = train.instance(i);
+//            if (dataCache.isClassNominal) {
+//                classProbs[(int) inst.classValue()] += inst.weight();
+//                totalWeight += inst.weight();
+//            } else {
+//                classProbs[0] += inst.classValue() * inst.weight();
+//                totalSumSquared +=
+//                        inst.classValue() * inst.classValue() * inst.weight();
+//                totalWeight += inst.weight();
+//            }
+//        }
+//
+//        double trainVariance = 0;
+//        if (!dataCache.isClassNominal) {
+//            trainVariance =
+//                    MyRandomTree.singleVariance(classProbs[0], totalSumSquared, totalWeight)
+//                            / totalWeight;
+//            classProbs[0] /= totalWeight;
+//        }
+//
+//        // Build tree
+//        m_Tree = new Tree();
+//        m_Info = new Instances(data, 0);
+//        m_Tree.buildTree(train, classProbs, attIndicesWindow, totalWeight, rand, 0,
+//                m_MinVarianceProp * trainVariance);
+//
+//        // Backfit if required
+//        if (backfit != null) {
+//            m_Tree.backfitData(backfit);
+//        }
+//    }
 
-        // Make sure K value is in range
-        if (m_KValue > data.numAttributes() - 1) {
-            m_KValue = data.numAttributes() - 1;
-        }
-        if (m_KValue < 1) {
-            m_KValue = (int) Utils.log2(data.numAttributes() - 1) + 1;
-        }
-
-        // can classifier handle the data?
-        getCapabilities().testWithFail(data);
-
-        // remove instances with missing class
-        data = new Instances(data);
-        data.deleteWithMissingClass();
-
-        // only class? -> build ZeroR model
-        if (data.numAttributes() == 1) {
-            System.err
-                    .println("Cannot build model (only class attribute present in data!), "
-                            + "using ZeroR model instead!");
-            m_zeroR = new weka.classifiers.rules.ZeroR();
-            m_zeroR.buildClassifier(data);
-            return;
-        } else {
-            m_zeroR = null;
-        }
-
-        // Figure out appropriate datasets
-        Instances train = null;
-        Instances backfit = null;
-        Random rand = data.getRandomNumberGenerator(m_randomSeed);
-        if (m_NumFolds <= 0) {
-            train = data;
-        } else {
-            data.randomize(rand);
-            data.stratify(m_NumFolds);
-            train = data.trainCV(m_NumFolds, 1, rand);
-            backfit = data.testCV(m_NumFolds, 1);
-        }
-
-        // Create the attribute indices window
-        int[] attIndicesWindow = new int[data.numAttributes() - 1];
-        int j = 0;
-        for (int i = 0; i < attIndicesWindow.length; i++) {
-            if (j == data.classIndex()) {
-                j++; // do not include the class
-            }
-            attIndicesWindow[i] = j++;
-        }
-
-        double totalWeight = 0;
-        double totalSumSquared = 0;
-
-        // Compute initial class counts
-        double[] classProbs = new double[train.numClasses()];
-        for (int i = 0; i < train.numInstances(); i++) {
-            Instance inst = train.instance(i);
-            if (data.classAttribute().isNominal()) {
-                classProbs[(int) inst.classValue()] += inst.weight();
-                totalWeight += inst.weight();
-            } else {
-                classProbs[0] += inst.classValue() * inst.weight();
-                totalSumSquared +=
-                        inst.classValue() * inst.classValue() * inst.weight();
-                totalWeight += inst.weight();
-            }
-        }
-
-        double trainVariance = 0;
-        if (data.classAttribute().isNumeric()) {
-            trainVariance =
-                    MyRandomTree.singleVariance(classProbs[0], totalSumSquared, totalWeight)
-                            / totalWeight;
-            classProbs[0] /= totalWeight;
-        }
-
-        // Build tree
-        m_Tree = new Tree();
-        m_Info = new Instances(data, 0);
-        m_Tree.buildTree(train, classProbs, attIndicesWindow, totalWeight, rand, 0,
-                m_MinVarianceProp * trainVariance);
-
-        // Backfit if required
-        if (backfit != null) {
-            m_Tree.backfitData(backfit);
-        }
+    public double[] distributionForInstanceInDataCache(DataCache data, int instIdx) {
+        return m_Tree.distributionForInstanceInDataCache(data, instIdx);
     }
 
     /**
@@ -999,42 +1006,51 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
          * Holds the sum of squared errors and the weight in the numeric case.
          */
         protected double[] m_Distribution = null;
+        
+        protected DataCache dataCache;
+        
+        protected Integer[] instIndices;
 
-        /**
-         * Backfits the given data into the tree.
-         */
-        public void backfitData(Instances data) throws Exception {
-
-            double totalWeight = 0;
-            double totalSumSquared = 0;
-
-            // Compute initial class counts
-            double[] classProbs = new double[data.numClasses()];
-            for (int i = 0; i < data.numInstances(); i++) {
-                Instance inst = data.instance(i);
-                if (data.classAttribute().isNominal()) {
-                    classProbs[(int) inst.classValue()] += inst.weight();
-                    totalWeight += inst.weight();
-                } else {
-                    classProbs[0] += inst.classValue() * inst.weight();
-                    totalSumSquared +=
-                            inst.classValue() * inst.classValue() * inst.weight();
-                    totalWeight += inst.weight();
-                }
-            }
-
-            double trainVariance = 0;
-            if (data.classAttribute().isNumeric()) {
-                trainVariance =
-                        MyRandomTree
-                                .singleVariance(classProbs[0], totalSumSquared, totalWeight)
-                                / totalWeight;
-                classProbs[0] /= totalWeight;
-            }
-
-            // Fit data into tree
-            backfitData(data, classProbs, totalWeight);
+        public Tree(DataCache dataCache, Integer[] instIndices) {
+            this.dataCache = dataCache;
+            this.instIndices = instIndices;
         }
+
+//        /**
+//         * Backfits the given data into the tree.
+//         */
+//        public void backfitData(Instances data) throws Exception {
+//
+//            double totalWeight = 0;
+//            double totalSumSquared = 0;
+//
+//            // Compute initial class counts
+//            double[] classProbs = new double[data.numClasses()];
+//            for (int i = 0; i < instIndices.length; i++) {
+//                Instance inst = data.instance(i);
+//                if (dataCache.isClassNominal) {
+//                    classProbs[(int) inst.classValue()] += inst.weight();
+//                    totalWeight += inst.weight();
+//                } else {
+//                    classProbs[0] += inst.classValue() * inst.weight();
+//                    totalSumSquared +=
+//                            inst.classValue() * inst.classValue() * inst.weight();
+//                    totalWeight += inst.weight();
+//                }
+//            }
+//
+//            double trainVariance = 0;
+//            if (!dataCache.isClassNominal) {
+//                trainVariance =
+//                        MyRandomTree
+//                                .singleVariance(classProbs[0], totalSumSquared, totalWeight)
+//                                / totalWeight;
+//                classProbs[0] /= totalWeight;
+//            }
+//
+//            // Fit data into tree
+//            backfitData(data, classProbs, totalWeight);
+//        }
 
         /**
          * Computes class distribution of an instance using the decision tree.
@@ -1049,6 +1065,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
 
             if (m_Attribute > -1) {
 
+                // TODO Vigilar amb els missing values
                 // Node is not a leaf
                 if (instance.isMissing(m_Attribute)) {
 
@@ -1077,6 +1094,76 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                         returnedDist = m_Successors[0].distributionForInstance(instance);
                     } else {
                         returnedDist = m_Successors[1].distributionForInstance(instance);
+                    }
+                }
+            }
+
+            // Node is a leaf or successor is empty?
+            if ((m_Attribute == -1) || (returnedDist == null)) {
+
+                // Is node empty?
+                if (m_ClassDistribution == null) {
+                    if (getAllowUnclassifiedInstances()) {
+                        double[] result = new double[m_Info.numClasses()];
+                        if (m_Info.classAttribute().isNumeric()) {
+                            result[0] = Utils.missingValue();
+                        }
+                        return result;
+                    } else {
+                        return null;
+                    }
+                }
+
+                // Else return normalized distribution
+                double[] normalizedDistribution = new double[0];
+                try {
+                    normalizedDistribution = m_ClassDistribution.clone();
+                    if (m_Info.classAttribute().isNominal()) {
+                        Utils.normalize(normalizedDistribution);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    for (double d : normalizedDistribution) {
+                        System.out.println(d);
+                    }
+                    System.exit(9);
+                }
+                return normalizedDistribution;
+            } else {
+                return returnedDist;
+            }
+        }
+
+        public double[] distributionForInstanceInDataCache(DataCache data, int instIdx) {
+
+            double[] returnedDist = null;
+
+            if (m_Attribute > -1) {
+
+                // Node is not a leaf
+                if (data.isValueMissing(m_Attribute, instIdx)) {
+
+                    // Value is missing
+                    returnedDist = new double[m_Info.numClasses()];
+
+                    // Split instance up
+                    for (int i = 0; i < m_Successors.length; i++) {
+                        double[] help = m_Successors[i].distributionForInstanceInDataCache(data, instIdx);
+                        if (help != null) {
+                            for (int j = 0; j < help.length; j++) {
+                                returnedDist[j] += m_Prop[i] * help[j];
+                            }
+                        }
+                    }
+                } else if (m_Info.attribute(m_Attribute).isNominal()) {
+                    // For nominal attributes
+                    returnedDist = m_Successors[(int) data.vals[m_Attribute][instIdx]].distributionForInstanceInDataCache(data, instIdx);
+                } else {
+                    // For numeric attributes
+                    if (data.vals[m_Attribute][instIdx] < m_SplitPoint) {
+                        returnedDist = m_Successors[0].distributionForInstanceInDataCache(data, instIdx);;
+                    } else {
+                        returnedDist = m_Successors[1].distributionForInstanceInDataCache(data, instIdx);;
                     }
                 }
             }
@@ -1253,149 +1340,148 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             }
         }
 
-        /**
-         * Recursively backfits data into the tree.
-         *
-         * @param data the data to work with
-         * @param classProbs the class distribution
-         * @throws Exception if generation fails
-         */
-        protected void backfitData(Instances data, double[] classProbs,
-                                   double totalWeight) throws Exception {
-
-            // Make leaf if there are no training instances
-            if (data.numInstances() == 0) {
-                m_Attribute = -1;
-                m_ClassDistribution = null;
-                if (data.classAttribute().isNumeric()) {
-                    m_Distribution = new double[2];
-                }
-                m_Prop = null;
-                return;
-            }
-
-            double priorVar = 0;
-            if (data.classAttribute().isNumeric()) {
-
-                // Compute prior variance
-                double totalSum = 0, totalSumSquared = 0, totalSumOfWeights = 0;
-                for (int i = 0; i < data.numInstances(); i++) {
-                    Instance inst = data.instance(i);
-                    totalSum += inst.classValue() * inst.weight();
-                    totalSumSquared +=
-                            inst.classValue() * inst.classValue() * inst.weight();
-                    totalSumOfWeights += inst.weight();
-                }
-                priorVar =
-                        MyRandomTree.singleVariance(totalSum, totalSumSquared,
-                                totalSumOfWeights);
-            }
-
-            // Check if node doesn't contain enough instances or is pure
-            // or maximum depth reached
-            m_ClassDistribution = classProbs.clone();
-
-      /*
-       * if (Utils.sum(m_ClassDistribution) < 2 * m_MinNum ||
-       * Utils.eq(m_ClassDistribution[Utils.maxIndex(m_ClassDistribution)],
-       * Utils .sum(m_ClassDistribution))) {
-       *
-       * // Make leaf m_Attribute = -1; m_Prop = null; return; }
-       */
-
-            // Are we at an inner node
-            if (m_Attribute > -1) {
-
-                // Compute new weights for subsets based on backfit data
-                m_Prop = new double[m_Successors.length];
-                for (int i = 0; i < data.numInstances(); i++) {
-                    Instance inst = data.instance(i);
-                    if (!inst.isMissing(m_Attribute)) {
-                        if (data.attribute(m_Attribute).isNominal()) {
-                            m_Prop[(int) inst.value(m_Attribute)] += inst.weight();
-                        } else {
-                            m_Prop[(inst.value(m_Attribute) < m_SplitPoint) ? 0 : 1] +=
-                                    inst.weight();
-                        }
-                    }
-                }
-
-                // If we only have missing values we can make this node into a leaf
-                if (Utils.sum(m_Prop) <= 0) {
-                    m_Attribute = -1;
-                    m_Prop = null;
-
-                    if (data.classAttribute().isNumeric()) {
-                        m_Distribution = new double[2];
-                        m_Distribution[0] = priorVar;
-                        m_Distribution[1] = totalWeight;
-                    }
-
-                    return;
-                }
-
-                // Otherwise normalize the proportions
-                Utils.normalize(m_Prop);
-
-                // Split data
-                Instances[] subsets = splitData(data);
-
-                // Go through subsets
-                for (int i = 0; i < subsets.length; i++) {
-
-                    // Compute distribution for current subset
-                    double[] dist = new double[data.numClasses()];
-                    double sumOfWeights = 0;
-                    for (int j = 0; j < subsets[i].numInstances(); j++) {
-                        if (data.classAttribute().isNominal()) {
-                            dist[(int) subsets[i].instance(j).classValue()] +=
-                                    subsets[i].instance(j).weight();
-                        } else {
-                            dist[0] +=
-                                    subsets[i].instance(j).classValue()
-                                            * subsets[i].instance(j).weight();
-                            sumOfWeights += subsets[i].instance(j).weight();
-                        }
-                    }
-
-                    if (sumOfWeights > 0) {
-                        dist[0] /= sumOfWeights;
-                    }
-
-                    // Backfit subset
-                    m_Successors[i].backfitData(subsets[i], dist, totalWeight);
-                }
-
-                // If unclassified instances are allowed, we don't need to store the
-                // class distribution
-                if (getAllowUnclassifiedInstances()) {
-                    m_ClassDistribution = null;
-                    return;
-                }
-
-                for (int i = 0; i < subsets.length; i++) {
-                    if (m_Successors[i].m_ClassDistribution == null) {
-                        return;
-                    }
-                }
-                m_ClassDistribution = null;
-
-                // If we have a least two non-empty successors, we should keep this tree
-        /*
-         * int nonEmptySuccessors = 0; for (int i = 0; i < subsets.length; i++)
-         * { if (m_Successors[i].m_ClassDistribution != null) {
-         * nonEmptySuccessors++; if (nonEmptySuccessors > 1) { return; } } }
-         *
-         * // Otherwise, this node is a leaf or should become a leaf
-         * m_Successors = null; m_Attribute = -1; m_Prop = null; return;
-         */
-            }
-        }
+//        /**
+//         * Recursively backfits data into the tree.
+//         *
+//         * @param data the data to work with
+//         * @param classProbs the class distribution
+//         * @throws Exception if generation fails
+//         */
+//        protected void backfitData(Instances data, double[] classProbs,
+//                                   double totalWeight) throws Exception {
+//
+//            // Make leaf if there are no training instances
+//            if (instIndices.length == 0) {
+//                m_Attribute = -1;
+//                m_ClassDistribution = null;
+//                if (!dataCache.isClassNominal) {
+//                    m_Distribution = new double[2];
+//                }
+//                m_Prop = null;
+//                return;
+//            }
+//
+//            double priorVar = 0;
+//            if (!dataCache.isClassNominal) {
+//
+//                // Compute prior variance
+//                double totalSum = 0, totalSumSquared = 0, totalSumOfWeights = 0;
+//                for (int i = 0; i < instIndices.length; i++) {
+//                    Instance inst = data.instance(i);
+//                    totalSum += inst.classValue() * inst.weight();
+//                    totalSumSquared +=
+//                            inst.classValue() * inst.classValue() * inst.weight();
+//                    totalSumOfWeights += inst.weight();
+//                }
+//                priorVar =
+//                        MyRandomTree.singleVariance(totalSum, totalSumSquared,
+//                                totalSumOfWeights);
+//            }
+//
+//            // Check if node doesn't contain enough instances or is pure
+//            // or maximum depth reached
+//            m_ClassDistribution = classProbs.clone();
+//
+//      /*
+//       * if (Utils.sum(m_ClassDistribution) < 2 * m_MinNum ||
+//       * Utils.eq(m_ClassDistribution[Utils.maxIndex(m_ClassDistribution)],
+//       * Utils .sum(m_ClassDistribution))) {
+//       *
+//       * // Make leaf m_Attribute = -1; m_Prop = null; return; }
+//       */
+//
+//            // Are we at an inner node
+//            if (m_Attribute > -1) {
+//
+//                // Compute new weights for subsets based on backfit data
+//                m_Prop = new double[m_Successors.length];
+//                for (int i = 0; i < instIndices.length; i++) {
+//                    Instance inst = data.instance(i);
+//                    if (!inst.isMissing(m_Attribute)) {
+//                        if (data.attribute(m_Attribute).isNominal()) {
+//                            m_Prop[(int) inst.value(m_Attribute)] += inst.weight();
+//                        } else {
+//                            m_Prop[(inst.value(m_Attribute) < m_SplitPoint) ? 0 : 1] +=
+//                                    inst.weight();
+//                        }
+//                    }
+//                }
+//
+//                // If we only have missing values we can make this node into a leaf
+//                if (Utils.sum(m_Prop) <= 0) {
+//                    m_Attribute = -1;
+//                    m_Prop = null;
+//
+//                    if (!dataCache.isClassNominal) {
+//                        m_Distribution = new double[2];
+//                        m_Distribution[0] = priorVar;
+//                        m_Distribution[1] = totalWeight;
+//                    }
+//
+//                    return;
+//                }
+//
+//                // Otherwise normalize the proportions
+//                Utils.normalize(m_Prop);
+//
+//                // Split data
+//                Instances[] subsets = splitData(data);
+//
+//                // Go through subsets
+//                for (int i = 0; i < subsets.length; i++) {
+//
+//                    // Compute distribution for current subset
+//                    double[] dist = new double[data.numClasses()];
+//                    double sumOfWeights = 0;
+//                    for (int j = 0; j < subsets[i].numInstances(); j++) {
+//                        if (dataCache.isClassNominal) {
+//                            dist[(int) subsets[i].instance(j).classValue()] +=
+//                                    subsets[i].instance(j).weight();
+//                        } else {
+//                            dist[0] +=
+//                                    subsets[i].instance(j).classValue()
+//                                            * subsets[i].instance(j).weight();
+//                            sumOfWeights += subsets[i].instance(j).weight();
+//                        }
+//                    }
+//
+//                    if (sumOfWeights > 0) {
+//                        dist[0] /= sumOfWeights;
+//                    }
+//
+//                    // Backfit subset
+//                    m_Successors[i].backfitData(subsets[i], dist, totalWeight);
+//                }
+//
+//                // If unclassified instances are allowed, we don't need to store the
+//                // class distribution
+//                if (getAllowUnclassifiedInstances()) {
+//                    m_ClassDistribution = null;
+//                    return;
+//                }
+//
+//                for (int i = 0; i < subsets.length; i++) {
+//                    if (m_Successors[i].m_ClassDistribution == null) {
+//                        return;
+//                    }
+//                }
+//                m_ClassDistribution = null;
+//
+//                // If we have a least two non-empty successors, we should keep this tree
+//        /*
+//         * int nonEmptySuccessors = 0; for (int i = 0; i < subsets.length; i++)
+//         * { if (m_Successors[i].m_ClassDistribution != null) {
+//         * nonEmptySuccessors++; if (nonEmptySuccessors > 1) { return; } } }
+//         *
+//         * // Otherwise, this node is a leaf or should become a leaf
+//         * m_Successors = null; m_Attribute = -1; m_Prop = null; return;
+//         */
+//            }
+//        }
 
         /**
          * Recursively generates a tree.
          *
-         * @param data the data to work with
          * @param classProbs the class distribution
          * @param attIndicesWindow the attribute window to choose attributes from
          * @param random random number generator for choosing random attributes
@@ -1403,42 +1489,38 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
          * @throws Exception if generation fails
          */
         // Modifying the attIndicesWindow I can choose which attributes I want to discard
-        protected void buildTree(Instances data, double[] classProbs,
-                                 int[] attIndicesWindow, double totalWeight, Random random, int depth,
+        protected void buildTree(double[] classProbs, int[] attIndicesWindow, double totalWeight, Random random, int depth,
                                  double minVariance) throws Exception {
 
             // Make leaf if there are no training instances
-            if (data.numInstances() == 0) {
+            if (instIndices.length == 0) {
                 m_Attribute = -1;
                 m_ClassDistribution = null;
                 m_Prop = null;
 
-                if (data.classAttribute().isNumeric()) {
+                if (!dataCache.isClassNominal) {
                     m_Distribution = new double[2];
                 }
                 return;
             }
 
             double priorVar = 0;
-            if (data.classAttribute().isNumeric()) {
+            if (!dataCache.isClassNominal) {
 
                 // Compute prior variance
                 double totalSum = 0, totalSumSquared = 0, totalSumOfWeights = 0;
-                for (int i = 0; i < data.numInstances(); i++) {
-                    Instance inst = data.instance(i);
-                    totalSum += inst.classValue() * inst.weight();
-                    totalSumSquared +=
-                            inst.classValue() * inst.classValue() * inst.weight();
-                    totalSumOfWeights += inst.weight();
+                for (int idx : instIndices) {
+//                    Instance inst = data.instance(i);
+                    totalSum += dataCache.instClassValues[idx] * dataCache.instWeights[idx];
+                    totalSumSquared += dataCache.instClassValues[idx] * dataCache.instClassValues[idx] * dataCache.instWeights[idx];
+                    totalSumOfWeights += dataCache.instWeights[idx];
                 }
-                priorVar =
-                        MyRandomTree.singleVariance(totalSum, totalSumSquared,
-                                totalSumOfWeights);
+                priorVar = MyRandomTree.singleVariance(totalSum, totalSumSquared, totalSumOfWeights);
             }
 
             // Check if node doesn't contain enough instances or is pure
             // or maximum depth reached
-            if (data.classAttribute().isNominal()) {
+            if (dataCache.isClassNominal) {
                 totalWeight = Utils.sum(classProbs);
             }
             // System.err.println("Total weight " + totalWeight);
@@ -1446,13 +1528,13 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             if (totalWeight < 2 * m_MinNum ||
 
                     // Nominal case
-                    (data.classAttribute().isNominal() && Utils.eq(
+                    (dataCache.isClassNominal && Utils.eq(
                             classProbs[Utils.maxIndex(classProbs)], Utils.sum(classProbs)))
 
                     ||
 
                     // Numeric case
-                    (data.classAttribute().isNumeric() && priorVar / totalWeight < minVariance)
+                    (!dataCache.isClassNominal && priorVar / totalWeight < minVariance)
 
                     ||
 
@@ -1462,7 +1544,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 // Make leaf
                 m_Attribute = -1;
                 m_ClassDistribution = classProbs.clone();
-                if (data.classAttribute().isNumeric()) {
+                if (!dataCache.isClassNominal) {
                     m_Distribution = new double[2];
                     m_Distribution[0] = priorVar;
                     m_Distribution[1] = totalWeight;
@@ -1483,14 +1565,14 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             // Handles to get arrays out of distribution method
             double[][] props = new double[1][0];
             double[][][] dists = new double[1][0][0];
-            double[][] totalSubsetWeights = new double[data.numAttributes()][0];
+            double[][] totalSubsetWeights = new double[dataCache.numAttributes][0];
 
             // Investigate K random attributes
             int attIndex = 0;
             int windowSize = attIndicesWindow.length;
             int k = m_KValue;
             boolean gainFound = false;
-            double[] tempNumericVals = new double[data.numAttributes()];
+            double[] tempNumericVals = new double[dataCache.numAttributes];
             while ((windowSize > 0) && (k-- > 0 || !gainFound)) {
 
                 int chosenIndex = random.nextInt(windowSize);
@@ -1502,12 +1584,12 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 windowSize--;
 
                 double currSplit =
-                        data.classAttribute().isNominal() ? distribution(props, dists,
-                                attIndex, data) : numericDistribution(props, dists, attIndex,
-                                totalSubsetWeights, data, tempNumericVals);
+                        dataCache.isClassNominal ? distribution(props, dists,
+                                attIndex) : numericDistribution(props, dists, attIndex,
+                                totalSubsetWeights, new Instances(new ReaderUTF8(null)), tempNumericVals); // need to change numericDistribution
 
                 double currVal =
-                        data.classAttribute().isNominal() ? gain(dists[0], priorVal(dists[0]))
+                        dataCache.isClassNominal ? gain(dists[0], priorVal(dists[0]))
                                 : tempNumericVals[attIndex];
 
                 if (Utils.gr(currVal, 0)) {
@@ -1537,21 +1619,23 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 // Build subtrees
                 m_SplitPoint = split;
                 m_Prop = bestProps;
-                Instances[] subsets = splitData(data);
+                ArrayList<ArrayList<Integer>> subsets = splitData(random);
                 m_Successors = new Tree[bestDists.length];
                 double[] attTotalSubsetWeights = totalSubsetWeights[bestIndex];
 
                 for (int i = 0; i < bestDists.length; i++) {
-                    m_Successors[i] = new Tree();
-                    m_Successors[i].buildTree(subsets[i], bestDists[i], attIndicesWindow,
-                            data.classAttribute().isNominal() ? 0 : attTotalSubsetWeights[i],
+                    Integer[] instIndicesSubset = new Integer[subsets.get(i).size()];
+                    subsets.get(i).toArray(instIndicesSubset);
+                    m_Successors[i] = new Tree(dataCache, instIndicesSubset);
+                    m_Successors[i].buildTree(bestDists[i], attIndicesWindow,
+                            dataCache.isClassNominal ? 0 : attTotalSubsetWeights[i],
                             random, depth + 1, minVariance);
                 }
 
                 // If all successors are non-empty, we don't need to store the class
                 // distribution
                 boolean emptySuccessor = false;
-                for (int i = 0; i < subsets.length; i++) {
+                for (int i = 0; i < subsets.size(); i++) {
                     if (m_Successors[i].m_ClassDistribution == null) {
                         emptySuccessor = true;
                         break;
@@ -1565,7 +1649,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 // Make leaf
                 m_Attribute = -1;
                 m_ClassDistribution = classProbs.clone();
-                if (data.classAttribute().isNumeric()) {
+                if (!dataCache.isClassNominal) {
                     m_Distribution = new double[2];
                     m_Distribution[0] = priorVar;
                     m_Distribution[1] = totalWeight;
@@ -1594,64 +1678,45 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
         /**
          * Splits instances into subsets based on the given split.
          *
-         * @param data the data to work with
-         * @return the subsets of instances
+         * @return the subsets of indices of instances
          * @throws Exception if something goes wrong
          */
-        protected Instances[] splitData(Instances data) throws Exception {
+        protected ArrayList<ArrayList<Integer>> splitData(Random random) throws Exception {
 
-            // Allocate array of Instances objects
-            Instances[] subsets = new Instances[m_Prop.length];
+            // I need the number of instances for each subset
+            ArrayList<ArrayList<Integer>> subsets = new ArrayList<>(m_Prop.length);
             for (int i = 0; i < m_Prop.length; i++) {
-                subsets[i] = new Instances(data, data.numInstances());
+                subsets.add(new ArrayList<>());
             }
 
             // Go through the data
-            for (int i = 0; i < data.numInstances(); i++) {
-
-                // Get instance
-                Instance inst = data.instance(i);
+            for (int idx : instIndices) {
 
                 // Does the instance have a missing value?
-                if (inst.isMissing(m_Attribute)) {
-
-                    // Split instance up
+                if (dataCache.isValueMissing(m_Attribute, idx)) {
+                    // decide where to put this instance randomly, with bigger branches
+                    // getting a higher chance
+                    double rn = random.nextDouble();
+                    int myBranch = -1;
                     for (int k = 0; k < m_Prop.length; k++) {
-                        if (m_Prop[k] > 0) {
-//                            Instance copy = (Instance) inst.copy();
-//                            copy.setWeight(m_Prop[k] * inst.weight());
-//                            subsets[k].add(copy);
-                            subsets[k].add(inst);
+                        rn -= m_Prop[k];
+                        if ( (rn <= 0) || k == (m_Prop.length-1) ) {
+                            myBranch = k;
+                            break;
                         }
                     }
-
-                    // Proceed to next instance
-                    continue;
+                    subsets.get(myBranch).add(idx);
                 }
 
                 // Do we have a nominal attribute?
-                if (data.attribute(m_Attribute).isNominal()) {
-                    subsets[(int) inst.value(m_Attribute)].add(inst);
-
-                    // Proceed to next instance
-                    continue;
+                else if (dataCache.isAttrNominal(m_Attribute)) {
+                    subsets.get((int) dataCache.vals[m_Attribute][idx]).add(idx);
                 }
 
                 // Do we have a numeric attribute?
-                if (data.attribute(m_Attribute).isNumeric()) {
-                    subsets[(inst.value(m_Attribute) < m_SplitPoint) ? 0 : 1].add(inst);
-
-                    // Proceed to next instance
-                    continue;
+                else {
+                    subsets.get((dataCache.vals[m_Attribute][idx] < m_SplitPoint) ? 0 : 1).add(idx);
                 }
-
-                // Else throw an exception
-                throw new IllegalArgumentException("Unknown attribute type");
-            }
-
-            // Save memory
-            for (int i = 0; i < m_Prop.length; i++) {
-                subsets[i].compactify();
             }
 
             // Return the subsets
@@ -1681,7 +1746,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             double[] sumSquared = null;
             double[] sumOfWeights = null;
             double totalSum = 0, totalSumSquared = 0, totalSumOfWeights = 0;
-            int indexOfFirstMissingValue = data.numInstances();
+            int indexOfFirstMissingValue = instIndices.length;
 
             if (attribute.isNominal()) {
                 sums = new double[attribute.numValues()];
@@ -1689,12 +1754,12 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 sumOfWeights = new double[attribute.numValues()];
                 int attVal;
 
-                for (int i = 0; i < data.numInstances(); i++) {
+                for (int i = 0; i < instIndices.length; i++) {
                     Instance inst = data.instance(i);
                     if (inst.isMissing(att)) {
 
                         // Skip missing values at this stage
-                        if (indexOfFirstMissingValue == data.numInstances()) {
+                        if (indexOfFirstMissingValue == instIndices.length) {
                             indexOfFirstMissingValue = i;
                         }
                         continue;
@@ -1723,7 +1788,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 data.sort(att);
 
                 // Move all instances into second subset
-                for (int j = 0; j < data.numInstances(); j++) {
+                for (int j = 0; j < instIndices.length; j++) {
                     Instance inst = data.instance(j);
                     if (inst.isMissing(att)) {
 
@@ -1802,7 +1867,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             }
 
             // Distribute weights for instances with missing values
-            for (int i = indexOfFirstMissingValue; i < data.numInstances(); i++) {
+            for (int i = indexOfFirstMissingValue; i < instIndices.length; i++) {
                 Instance inst = data.instance(i);
 
                 for (int j = 0; j < sums.length; j++) {
@@ -1847,52 +1912,56 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
          * @param props
          * @param dists
          * @param att the attribute index
-         * @param data the data to work with
          * @throws Exception if something goes wrong
          */
-        protected double distribution(double[][] props, double[][][] dists,
-                                      int att, Instances data) throws Exception {
+        protected double distribution(double[][] props, double[][][] dists, int att) throws Exception {
 
             double splitPoint = Double.NaN;
-            Attribute attribute = data.attribute(att);
+//            Attribute attribute = data.attribute(att);
             double[][] dist = null;
-            int indexOfFirstMissingValue = data.numInstances();
+            int indexOfFirstMissingValue = instIndices.length; // mirar que funcioni
 
-            if (attribute.isNominal()) {
+            if (dataCache.isAttrNominal(att)) {
 
                 // For nominal attributes
-                dist = new double[attribute.numValues()][data.numClasses()];
-                for (int i = 0; i < data.numInstances(); i++) {
-                    Instance inst = data.instance(i);
-                    if (inst.isMissing(att)) {
-
+                dist = new double[dataCache.attNumVals[att]][dataCache.numClasses];
+                for (int i = 0; i < instIndices.length; ++i) {
+                    int idx = instIndices[i];
+                    if (dataCache.isValueMissing(att, idx)) {
                         // Skip missing values at this stage
-                        if (indexOfFirstMissingValue == data.numInstances()) {
+                        if (indexOfFirstMissingValue == instIndices.length) {
                             indexOfFirstMissingValue = i;
                         }
                         continue;
                     }
-                    dist[(int) inst.value(att)][(int) inst.classValue()] += inst.weight();
+                    dist[(int) dataCache.vals[att][idx]][dataCache.instClassValues[idx]] += dataCache.instWeights[idx];
                 }
             } else {
 
                 // For numeric attributes
-                double[][] currDist = new double[2][data.numClasses()];
-                dist = new double[2][data.numClasses()];
+                double[][] currDist = new double[2][dataCache.numClasses];
+                dist = new double[2][dataCache.numClasses];
 
-                // Sort data
-                data.sort(att);
+                Arrays.sort(instIndices, new Comparator<Integer>() {
+                    @Override
+                    public int compare(Integer o1, Integer o2) {
+                        float val = dataCache.vals[att][o1] - dataCache.vals[att][o2];
+                        if (val == 0) return 0;
+                        else if (val < 0) return -1;
+                        else return 1;
+                    }
+                });
 
                 // Move all instances into second subset
-                for (int j = 0; j < data.numInstances(); j++) {
-                    Instance inst = data.instance(j);
-                    if (inst.isMissing(att)) {
+                for (int j = 0; j < instIndices.length; ++j) {
+                    int idx = instIndices[j];
+                    if (dataCache.isValueMissing(att, idx)) {
 
                         // Can stop as soon as we hit a missing value
                         indexOfFirstMissingValue = j;
                         break;
                     }
-                    currDist[1][(int) inst.classValue()] += inst.weight();
+                    currDist[1][dataCache.instClassValues[idx]] += dataCache.instWeights[idx];
                 }
 
                 // Value before splitting
@@ -1904,11 +1973,11 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 }
 
                 // Try all possible split points
-                double currSplit = data.instance(0).value(att);
+                double currSplit = dataCache.vals[att][instIndices[0]];
                 double currVal, bestVal = -Double.MAX_VALUE;
                 for (int i = 0; i < indexOfFirstMissingValue; i++) {
-                    Instance inst = data.instance(i);
-                    double attVal = inst.value(att);
+                    int idxInst = instIndices[i];
+                    double attVal = dataCache.vals[att][idxInst];
 
                     // Can we place a sensible split point here?
                     if (attVal > currSplit) {
@@ -1941,17 +2010,9 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                     }
 
                     // Shift over the weight
-                    int classVal = (int) inst.classValue();
-                    currDist[0][classVal] += inst.weight();
-                    currDist[1][classVal] -= inst.weight();
-
-//                    for (double[] d : currDist) {
-//                        for (double dd : d) {
-//                            if (dd < 0) {
-//                                System.exit(10);
-//                            }
-//                        }
-//                    }
+                    int classVal = dataCache.instClassValues[idxInst];
+                    currDist[0][classVal] += dataCache.instWeights[idxInst];
+                    currDist[1][classVal] -= dataCache.instWeights[idxInst];
                 }
             }
 
@@ -1969,33 +2030,25 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             }
 
             // Distribute weights for instances with missing values
-            for (int i = indexOfFirstMissingValue; i < data.numInstances(); i++) {
-                Instance inst = data.instance(i);
-                if (attribute.isNominal()) {
-
+            for (int i = indexOfFirstMissingValue; i < instIndices.length; i++) {
+                int idx = instIndices[i];
+                if (dataCache.isAttrNominal(idx)) {
                     // Need to check if attribute value is missing
-                    if (inst.isMissing(att)) {
+                    if (dataCache.isValueMissing(att, idx)) {
                         for (int j = 0; j < dist.length; j++) {
-                            dist[j][(int) inst.classValue()] += props[0][j] * inst.weight();
+                            dist[j][(int) dataCache.instClassValues[idx]] += props[0][j] * dataCache.instWeights[idx];
                         }
                     }
                 } else {
-
                     // Can be sure that value is missing, so no test required
                     for (int j = 0; j < dist.length; j++) {
-                        dist[j][(int) inst.classValue()] += props[0][j] * inst.weight();
+                        dist[j][(int) dataCache.instClassValues[idx]] += props[0][j] * dataCache.instWeights[idx];
                     }
                 }
             }
 
             // Return distribution and split point
             dists[0] = dist;
-
-//            for (double[] d : dist) {
-//                for (double dd : d) {
-//                    if (dd < 0) System.exit(10);
-//                }
-//            }
 
             return splitPoint;
         }

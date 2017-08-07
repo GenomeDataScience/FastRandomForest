@@ -38,11 +38,7 @@ import java.util.Random;
  * @author Fran Supek (fran.supek[AT]irb.hr)
  */
 public class DataCache {
-  /** The data in the form of Instances, used for the weka version of the algorithm */
-  protected FastInstances instances;
-
-  /** Original data */
-  protected Instances origInstances;
+  protected Instances instances;
 
   /** Array with the indices of the selected attributes of the instances */
   protected int[] selectedAttributes;
@@ -84,6 +80,8 @@ public class DataCache {
 
   /** Used in training of FastRandomTrees. */
   protected int[] whatGoesWhere = null;
+
+  protected boolean isClassNominal;
   
   /**
    * Used in training of FastRandomTrees. Each tree can store its own
@@ -116,8 +114,8 @@ public class DataCache {
     numClasses = origData.numClasses();
     numInstances = origData.numInstances();
     // new
-    instances = new FastInstances(origData);
-    origInstances = instances;
+    instances = origData;
+    isClassNominal = origData.classAttribute().isNominal();
 
     attNumVals = new int[origData.numAttributes()];
     for (int i = 0; i < attNumVals.length; i++) {
@@ -203,15 +201,13 @@ public class DataCache {
    * @param origData
    */
   public DataCache(DataCache origData) {
-    // New
-    instances = origData.instances.copy();
-    origInstances = origData.origInstances;
 
     classIndex = origData.classIndex;       // copied
     numAttributes = origData.numAttributes; // copied
     numClasses = origData.numClasses;       // copied
     numInstances = origData.numInstances;   // copied
 
+    instances = origData.instances;
     attNumVals = origData.attNumVals;       // shallow copied
     instClassValues =
             origData.instClassValues;       // shallow copied
@@ -224,6 +220,8 @@ public class DataCache {
     numInBag = 0;
     
     whatGoesWhere = null;     // this will be created when tree building starts
+
+    isClassNominal = origData.isClassNominal;
 
   }
 
@@ -251,13 +249,13 @@ public class DataCache {
     // makes a deep copy of each instance, but with a shallow copy of its attributes
     DataCache result = new DataCache(this);
 
+    // Time ~ 160908 ns
     double[] newWeights = new double[ numInstances ]; // all 0.0 by default
     
     for ( int r = 0; r < bagSize; r++ ) {
       
       int curIdx = random.nextInt( numInstances );
       newWeights[curIdx] += instWeights[curIdx];
-      result.instances.get(curIdx).setWeight(newWeights[curIdx]);
       if ( !result.inBag[curIdx] ) {
         result.numInBag++;
         result.inBag[curIdx] = true;
@@ -276,6 +274,10 @@ public class DataCache {
 
       result.selectedAttributes[i] = a; // it will never have the attribute class
     }
+
+    // Time random access to the weights of all the instances:
+    //    - For newWeights[] ~ 18540 ns
+    //    - For instances.get(_).weight() ~ 72177 ns
 
     // we also need to fill sortedIndices by peeking into the inBag array, but
     // this can be postponed until the tree training begins
