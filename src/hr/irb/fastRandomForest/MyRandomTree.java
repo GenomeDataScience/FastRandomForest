@@ -1619,7 +1619,9 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                 // Build subtrees
                 m_SplitPoint = split;
                 m_Prop = bestProps;
+                long t = System.nanoTime();
                 ArrayList<ArrayList<Integer>> subsets = splitData(random);
+                Benchmark.updateTime(System.nanoTime() - t);
                 m_Successors = new Tree[bestDists.length];
                 double[] attTotalSubsetWeights = totalSubsetWeights[bestIndex];
 
@@ -1686,7 +1688,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             // I need the number of instances for each subset
             ArrayList<ArrayList<Integer>> subsets = new ArrayList<>(m_Prop.length);
             for (int i = 0; i < m_Prop.length; i++) {
-                subsets.add(new ArrayList<>());
+                subsets.add(new ArrayList<>(instIndices.length));
             }
 
             // Go through the data
