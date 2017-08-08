@@ -23,7 +23,6 @@
 
 package hr.irb.fastRandomForest;
 
-import com.sun.deploy.util.ArrayUtil;
 import weka.classifiers.AbstractClassifier;
 import weka.core.*;
 import weka.core.Capabilities.Capability;
@@ -55,7 +54,7 @@ class FastRandomTree
   /** for serialization */
   static final long serialVersionUID = 8934314652175299375L;
 
-  public static final double cnst = 100000;
+  public static final double cnst = -1;
   
   /** The subtrees appended to this tree (node). */
   protected AbstractClassifier[] m_Successors;
@@ -193,6 +192,7 @@ class FastRandomTree
    * function.
    */
   public void run() {
+//    System.out.println(Thread.currentThread().getId());
 
     // compute initial class counts
     double[] classProbs = new double[data.numClasses];
@@ -206,11 +206,14 @@ class FastRandomTree
     data.whatGoesWhere = new int[ data.inBag.length ];
     // create the attribute indices window - skip class
     int[] attIndicesWindow = data.selectedAttributes;
-    m_MotherForest.m_KValue = (int)Utils.log2(data.numAttributes) + 1;
+//    m_MotherForest.m_KValue = (int) Utils.log2(data.numAttributes)*2 + 1;
 
     // Start with FRF
-    if ((getKValue() * Utils.log2(data.numInstances) / (getKValue() + data.selectedAttributes.length)) > cnst) {
-      // We only need to create sortedIndices if we use FRF
+//    int k = getKValue();
+//    double x1 = Utils.log2(data.numInstances);
+//    double x2 = data.selectedAttributes.length;
+    if ((getKValue() * Utils.log2(data.numInBag) / (getKValue() + data.selectedAttributes.length)) > cnst) {
+      // We don't need to create the sortedIndices if we won't use it
       data.createInBagSortedIndicesNew();
 
       buildTree(data.sortedIndices, 0, data.sortedIndices[attIndicesWindow[0]].length - 1,
@@ -220,13 +223,10 @@ class FastRandomTree
     else {
       MyRandomTree auxTree = new MyRandomTree();
       auxTree.setNumFolds(0);
-      int auxAtt = data.selectedAttributes[0];
-      Integer[] instIndices = new Integer[data.sortedIndices[auxAtt].length];
-      for (int i = 0; i < instIndices.length; ++i) {
-        instIndices[i] = data.sortedIndices[auxAtt][i];
-      }
+      // Take only the instances that are in bag.
+      data.instances.takeInstances(data.inBag, data.numInBag);
       try {
-        auxTree.buildTree(data, instIndices, classProbs, data.selectedAttributes, data.reusableRandomGenerator, getKValue());
+        auxTree.buildTree(data.instances, classProbs, data.selectedAttributes, data.reusableRandomGenerator, getKValue());
       } catch (Exception e) {
         e.printStackTrace();
         System.exit(2);
@@ -334,7 +334,7 @@ class FastRandomTree
           for (int i = 0; i < m_Successors.length; i++) {
             double[] help = m_Successors[i] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[i]).distributionForInstanceInDataCache(data, instIdx) :
-                    ((MyRandomTree) m_Successors[i]).distributionForInstanceInDataCache(data, instIdx);
+                    ((MyRandomTree) m_Successors[i]).distributionForInstance(data.instances.get(instIdx));
             if (help != null) {
               for (int j = 0; j < help.length; j++) {
                 returnedDist[j] += m_Prop[i] * help[j];
@@ -348,27 +348,27 @@ class FastRandomTree
           //        .distributionForInstance(instance);
 
           // 0.99: new - binary splits (also) for nominal attributes
-          if ( data.vals[m_Attribute][instIdx] == m_SplitPoint ) {
+          if ( data.instances.get(instIdx).value(m_Attribute) == m_SplitPoint ) {
             returnedDist = m_Successors[0] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx) :
-                    ((MyRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx);
+                    ((MyRandomTree) m_Successors[0]).distributionForInstance(data.instances.get(instIdx));
           } else {
             returnedDist = m_Successors[1] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[1]).distributionForInstanceInDataCache(data, instIdx) :
-                    ((MyRandomTree) m_Successors[1]).distributionForInstanceInDataCache(data, instIdx);
+                    ((MyRandomTree) m_Successors[1]).distributionForInstance(data.instances.get(instIdx));
           }
 
 
         } else { // ------------------------------------------ numeric attributes
 
-          if ( data.vals[m_Attribute][instIdx] < m_SplitPoint) {
+          if ( data.instances.get(instIdx).value(m_Attribute) < m_SplitPoint) {
             returnedDist = m_Successors[0] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx) :
-                    ((MyRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx);
+                    ((MyRandomTree) m_Successors[0]).distributionForInstance(data.instances.get(instIdx));
           } else {
             returnedDist = m_Successors[1] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[1]).distributionForInstanceInDataCache(data, instIdx) :
-                    ((MyRandomTree) m_Successors[1]).distributionForInstanceInDataCache(data, instIdx);
+                    ((MyRandomTree) m_Successors[1]).distributionForInstance(data.instances.get(instIdx));
           }
         }
 
@@ -642,26 +642,21 @@ class FastRandomTree
           MyRandomTree auxTree = new MyRandomTree();
           auxTree.setNumFolds(0);
           // Take only the instances that belong to this node. Drop the others.
-          Integer[] instIndices;
-          int auxAtt = data.selectedAttributes[0];
           if (i == 0) {
-            instIndices = new Integer[belowTheSplitStartsAt - startAt];
-            for (int j = 0; j < instIndices.length; ++j) {
-              instIndices[j] = sortedIndices[auxAtt][startAt + j];
-            }
+            data.instances.takeInstances(sortedIndices[data.selectedAttributes[0]], startAt, belowTheSplitStartsAt - 1);
           } else {
-            instIndices = new Integer[endAt - belowTheSplitStartsAt + 1];
-            for (int j = 0; j < instIndices.length; ++j) {
-              instIndices[j] = sortedIndices[auxAtt][belowTheSplitStartsAt + j];
-            }
+            data.instances.takeInstances(sortedIndices[data.selectedAttributes[0]], belowTheSplitStartsAt, endAt);
           }
           try {
-            auxTree.buildTree(data, instIndices, dist[i], data.selectedAttributes, data.reusableRandomGenerator, getKValue());
+//            auxTree.buildClassifier(data.instances);
+            auxTree.buildTree(data.instances, dist[i], data.selectedAttributes, data.reusableRandomGenerator, getKValue());
           } catch (Exception e) {
             e.printStackTrace();
             System.exit(2);
           }
           m_Successors[i] = auxTree;
+          // restore all the instances, because the data object is reused for the other branches of this tree
+          data.instances.resetInstances();
         }
         
       }

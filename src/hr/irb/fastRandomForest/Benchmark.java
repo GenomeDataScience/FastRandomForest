@@ -176,9 +176,9 @@ public class Benchmark {
           accyScore[curCfr][curRun-1] = eval.pctCorrect();
           timeScore[curCfr][curRun-1] = elapsedTime;
 
-          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%6d\t",
+          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t",
                   curCfr, curRun, aucSum / sumClassProps,
-                  eval.pctCorrect(), elapsedTime, myTime/(8*1000000)));
+                  eval.pctCorrect(), elapsedTime)); // , myTime/(8*1000000)
 
           System.gc();
 
@@ -230,10 +230,10 @@ public class Benchmark {
 
     // write the results (that are in two StringBuilders) in a .csv file
     try{
-      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt10.csv", "UTF-8");
+      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt2.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt8.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt9.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (IOException e) {
