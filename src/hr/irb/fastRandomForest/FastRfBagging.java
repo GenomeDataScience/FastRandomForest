@@ -150,13 +150,20 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       new ArrayList<Future<?>>(m_Classifiers.length);
 
     try {
-      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)*5 + 1;
+//      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes) * Utils.log2(myData.numAttributes));
+//      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)*2 + 1;
+      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes)*(1 + 8*Math.exp(-myData.numAttributes/370.0)));
+//      int nAttrVirtual = myData.numAttributes - 1;
+      nAttrVirtual = nAttrVirtual >= myData.numAttributes ? myData.numAttributes : nAttrVirtual;
 
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
 
         // create the in-bag dataset (and be sure to remember what's in bag)
         // for computing the out-of-bag error later
+//        long t = System.nanoTime();
         DataCache bagData = myData.resample(bagSize, random, nAttrVirtual);
+//        Benchmark.updateTime(System.nanoTime() - t);
+
         bagData.reusableRandomGenerator = bagData.getRandomNumberGenerator(
           random.nextInt());
         inBag[treeIdx] = bagData.inBag; // store later for OOB error calculation

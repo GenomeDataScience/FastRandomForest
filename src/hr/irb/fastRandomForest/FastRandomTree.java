@@ -54,7 +54,7 @@ class FastRandomTree
   /** for serialization */
   static final long serialVersionUID = 8934314652175299375L;
 
-  public static final double cnst = -1;
+  public static final double cnst = -999999999;
   
   /** The subtrees appended to this tree (node). */
   protected AbstractClassifier[] m_Successors;
@@ -212,9 +212,11 @@ class FastRandomTree
 //    int k = getKValue();
 //    double x1 = Utils.log2(data.numInstances);
 //    double x2 = data.selectedAttributes.length;
-    if ((getKValue() * Utils.log2(data.numInBag) / (getKValue() + data.selectedAttributes.length)) > cnst) {
+    if (keepFastRandomTree(data.numInBag)) {
       // We don't need to create the sortedIndices if we won't use it
+//      long t = System.nanoTime();
       data.createInBagSortedIndicesNew();
+//      Benchmark.updateTime(System.nanoTime() - t);
 
       buildTree(data.sortedIndices, 0, data.sortedIndices[attIndicesWindow[0]].length - 1,
               classProbs, m_Debug, attIndicesWindow, 0);
@@ -236,6 +238,8 @@ class FastRandomTree
     }
 
     this.data = null;
+//    int nNodes = countNodes();
+//    Benchmark.updateNumNodes(nNodes);
       
   }
 
@@ -385,57 +389,19 @@ class FastRandomTree
       return m_ClassProbs;
 
     }
-
-//    double[] returnedDist = null;
-//
-//    if (m_Attribute > -1) {  // ============================ node is not a leaf
-//
-//      if ( data.isValueMissing(m_Attribute, instIdx) ) {  // ---------------- missing value
-//
-//        returnedDist = new double[m_MotherForest.m_Info.numClasses()];
-//        // split instance up
-//        for (int i = 0; i < m_Successors.length; i++) {
-//          double[] help = ((FastRandomTree) m_Successors[i]).distributionForInstanceInDataCache(data, instIdx);
-//          if (help != null) {
-//            for (int j = 0; j < help.length; j++) {
-//              returnedDist[j] += m_Prop[i] * help[j];
-//            }
-//          }
-//        }
-//
-//      } else if ( data.isAttrNominal(m_Attribute) ) { // ------ nominal
-//
-//        //returnedDist = m_Successors[(int) instance.value(m_Attribute)]
-//        //        .distributionForInstance(instance);
-//
-//        // 0.99: new - binary splits (also) for nominal attributes
-//        if ( data.vals[m_Attribute][instIdx] == m_SplitPoint ) {
-//          returnedDist = m_Successors[0].distributionForInstanceInDataCache(data, instIdx);
-//        } else {
-//          returnedDist = m_Successors[1].distributionForInstanceInDataCache(data, instIdx);
-//        }
-//
-//
-//      } else { // ------------------------------------------ numeric attributes
-//
-//        if ( data.vals[m_Attribute][instIdx] < m_SplitPoint) {
-//          returnedDist = m_Successors[0].distributionForInstanceInDataCache(data, instIdx);
-//        } else {
-//          returnedDist = m_Successors[1].distributionForInstanceInDataCache(data, instIdx);
-//        }
-//      }
-//
-//      return returnedDist;
-//
-//    } else { // =============================================== node is a leaf
-//
-//      return m_ClassProbs;
-//
-//    }
-
   }
   
-  
+  private boolean keepFastRandomTree (int nInstancesNewBranch) {
+    return (getKValue() * Utils.log2(nInstancesNewBranch) / (getKValue() + data.selectedAttributes.length)) > cnst;
+  }
+
+  private int countNodes() {
+    if (m_Attribute != -1) {
+      return ((FastRandomTree) m_Successors[0]).countNodes() + ((FastRandomTree) m_Successors[1]).countNodes() + 1;
+    } else {
+      return 1;
+    }
+  }
   
  /**
    * Recursively generates a tree. A derivative of the buildTree function from
@@ -539,7 +505,7 @@ class FastRandomTree
     double prior = Double.NaN;
     double bestNegPosterior = -Double.MAX_VALUE;
     int bestAttIdx = -1;
-    
+
     while ((windowSize > 0) && (k-- > 0 || !sensibleSplitFound ) ) {
 
       int chosenIndex = data.reusableRandomGenerator.nextInt(windowSize);
@@ -551,9 +517,12 @@ class FastRandomTree
       windowSize--;
 
       // new: 0.99
+//      long t = System.nanoTime();
       double candidateSplit = distributionSequentialAtt( prop, dist,
               bestNegPosterior, attIndex, 
-              sortedIndices[attIndex], startAt, endAt );  
+              sortedIndices[attIndex], startAt, endAt, classProbs );
+//      Benchmark.updateTime(System.nanoTime() - t);
+
 
       if ( Double.isNaN(candidateSplit) ) {
         continue;  // we did not improve over a previous attribute! "dist" is unchanged from before
@@ -586,17 +555,11 @@ class FastRandomTree
       m_Attribute = bestAttIdx;   // find best attribute
       m_SplitPoint = split; 
       m_Prop = prop; 
-      prop = null; // can be GC'ed 
-             
-      
-      //int[][][] subsetIndices =
-      //        new int[dist.length][data.numAttributes][];
-      //splitData( subsetIndices, m_Attribute,
-      //        m_SplitPoint, sortedIndices );
-      //int numInstancesBeforeSplit = sortedIndices[0].length;
-      
+      prop = null; // can be GC'ed
+
+//      long t = System.nanoTime();
       int belowTheSplitStartsAt = splitDataNew(  m_Attribute, m_SplitPoint, sortedIndices, startAt, endAt );
-      
+//      Benchmark.updateTime(System.nanoTime() - t);
 
       m_Successors = new AbstractClassifier[dist.length];  // dist.length now always == 2
       for (int i = 0; i < dist.length; i++) {
@@ -604,8 +567,7 @@ class FastRandomTree
         int nInstSucc = i == 0 ? belowTheSplitStartsAt - startAt : endAt - belowTheSplitStartsAt + 1;
 
         // continue with the FastRandomTree if --> (K * log(nInst)) / (K + nFeat) > some constant value
-        // TODO Tune this decision
-        if ((getKValue() * Utils.log2(nInstSucc) / (getKValue() + data.selectedAttributes.length)) > cnst) {
+        if (keepFastRandomTree(nInstSucc)) {
           FastRandomTree auxTree = new FastRandomTree();
           auxTree.m_MotherForest = this.m_MotherForest;
           auxTree.data = this.data;
@@ -643,9 +605,9 @@ class FastRandomTree
           auxTree.setNumFolds(0);
           // Take only the instances that belong to this node. Drop the others.
           if (i == 0) {
-            data.instances.takeInstances(sortedIndices[data.selectedAttributes[0]], startAt, belowTheSplitStartsAt - 1);
+            data.instances.takeInstances(sortedIndices[data.selectedAttributes[m_Attribute]], startAt, belowTheSplitStartsAt - 1);
           } else {
-            data.instances.takeInstances(sortedIndices[data.selectedAttributes[0]], belowTheSplitStartsAt, endAt);
+            data.instances.takeInstances(sortedIndices[data.selectedAttributes[m_Attribute]], belowTheSplitStartsAt, endAt);
           }
           try {
 //            auxTree.buildClassifier(data.instances);
@@ -945,17 +907,21 @@ class FastRandomTree
 
     }  // ============================================ end if nominal / numeric
 
-    
-    for (int a : data.selectedAttributes) { // xxxxxxxxxx attr by attr
+    // TODO Test if this works
+    boolean keepTreeBranch0 = keepFastRandomTree(num[0]);
+    boolean keepTreeBranch1 = keepFastRandomTree(num[1]);
+    int[] selectedAttributes;
+
+    if (keepTreeBranch0 || keepTreeBranch1) selectedAttributes = data.selectedAttributes;
+    // we don't need to rebuild the sortedIndices[][] matrix if we will change both branches to MyRandomTree
+    else selectedAttributes = new int[]{att};
+
+    for (int a : selectedAttributes) { // xxxxxxxxxx attr by attr
 
       // the first index of the sortedIndices in the above branch, and the first index in the below
       int startAbove = 0, startBelow = num[0]; // always only 2 sub-branches, remember where second starts
       
       Arrays.fill(tempArr, 0);
-      
-      //for (int branch = 0; branch < num.length; branch++) {
-      //  num[branch] = 0;
-      //}
       
       // fill them with stuff by looking at goesWhere array
       for (j = startAt; j <= endAt; j++) {
@@ -969,11 +935,7 @@ class FastRandomTree
         } else {
           tempArr[ startBelow ] = sortedIndices[a][j];
           startBelow++;
-        } 
-        
-        //subsetIndices[ branch == 0 ? startAbove :  ][ a ][ num[branch] ] = sortedIndices[a][j];
-        //num[branch]++;
-        
+        }
       }
       
       // now copy the tempArr into the sortedIndices, thus overwriting it
@@ -984,11 +946,7 @@ class FastRandomTree
     return startAt+num[0]; // the first index of "below the split" instances
     
   }
-  
-  
-  
-  
-  
+
 
   /**
    * Computes class distribution for an attribute. Not used anymore in 0.99.
@@ -1170,7 +1128,7 @@ class FastRandomTree
    * @param endAt Index in sortedIndicesOfAtt; do not touch anything after this index.
    */
   protected double distributionSequentialAtt( double[] propsBestAtt, double[][] distsBestAtt,
-          double scoreBestAtt, int attToExamine, int[] sortedIndicesOfAtt, int startAt, int endAt ) {
+          double scoreBestAtt, int attToExamine, int[] sortedIndicesOfAtt, int startAt, int endAt, double[] classProbs ) {
 
     double splitPoint = -Double.MAX_VALUE;
     
@@ -1178,7 +1136,10 @@ class FastRandomTree
     double[][] dist = this.tempDists;
     Arrays.fill( dist[0], 0.0 ); Arrays.fill( dist[1], 0.0 );
     double[][] currDist = this.tempDistsOther;
-    Arrays.fill( currDist[0], 0.0 ); Arrays.fill( currDist[1], 0.0 );
+    Arrays.fill( currDist[0], 0.0 ); //Arrays.fill( currDist[1], 0.0 );
+    for (int i = 0; i < classProbs.length; ++i) {
+      currDist[1][i] = classProbs[i];
+    }
     //double[][] dist = new double[2][data.numClasses];
     //double[][] currDist = new double[2][data.numClasses];
     
@@ -1186,9 +1147,12 @@ class FastRandomTree
     int sortedIndicesOfAttLength = endAt - startAt + 1;
     
     // find how many missing values we have for this attribute (they're always at the end)
+    // update the distribution to the future second son
     int lastNonmissingValIdx = endAt;
     for (int j = endAt; j >= startAt; j-- ) {
+      int inst = sortedIndicesOfAtt[j];
       if ( data.isValueMissing(attToExamine, sortedIndicesOfAtt[j]) ) {
+        currDist[1][data.instClassValues[inst]] -= data.instWeights[inst];
         lastNonmissingValIdx = j-1;
       } else {
         break;
@@ -1220,10 +1184,10 @@ class FastRandomTree
       } else {   // for >2 levels, we have to search different splits
 
         // begin with moving all instances into second subset ("below split")
-        for (int j = startAt; j <= lastNonmissingValIdx; j++) {
-          int inst = sortedIndicesOfAtt[j];
-          currDist[1][ data.instClassValues[inst] ] += data.instWeights[inst]; 
-        }
+//        for (int j = startAt; j <= lastNonmissingValIdx; j++) {
+//          int inst = sortedIndicesOfAtt[j];
+//          currDist[1][ data.instClassValues[inst] ] += data.instWeights[inst];
+//        }
         // create a default dist[] which we'll modify after we find the best class to split out
         copyDists(currDist, dist);
         
@@ -1283,23 +1247,19 @@ class FastRandomTree
                             // will always be sensible 
       
     } else { // ============================================ numeric attributes
-
-
-      // re-use the 2 x nClass temporary arrays created when tree was initialized
-      //Arrays.fill( dist[0], 0.0 );
-      //Arrays.fill( dist[1], 0.0 );
       
       // begin with moving all instances into second subset ("below split")
-      for (int j = startAt; j <= lastNonmissingValIdx; j++) {
-        int inst = sortedIndicesOfAtt[j];
-        currDist[1][ data.instClassValues[inst] ] += data.instWeights[inst]; 
-      }
+//      for (int j = startAt; j <= lastNonmissingValIdx; j++) {
+//        int inst = sortedIndicesOfAtt[j];
+//        currDist[1][ data.instClassValues[inst] ] += data.instWeights[inst];
+//      }
       copyDists(currDist, dist);
 
       double currVal = -Double.MAX_VALUE; // current value of splitting criterion 
       double bestVal = -Double.MAX_VALUE; // best value of splitting criterion
       int bestI = 0; // the value of "i" BEFORE which the splitpoint is placed
 
+//      long t = System.nanoTime();
       for (i = startAt+1; i <= lastNonmissingValIdx; i++) {  // --- try all split points
 
         int inst = sortedIndicesOfAtt[i];
@@ -1326,6 +1286,7 @@ class FastRandomTree
         }
 
       }                                             // ------- end trying split points
+//      Benchmark.updateTime(System.nanoTime() - t);
 
       /*
        * Determine the best split point:

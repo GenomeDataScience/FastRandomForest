@@ -38,7 +38,7 @@ import java.util.Random;
  * @author Fran Supek (fran.supek[AT]irb.hr)
  */
 public class DataCache {
-  protected Instances instances;
+  protected FastInstances instances;
 
   /** Array with the indices of the selected attributes of the instances */
   protected int[] selectedAttributes;
@@ -114,7 +114,7 @@ public class DataCache {
     numClasses = origData.numClasses();
     numInstances = origData.numInstances();
     // new
-    instances = origData;
+    instances = new FastInstances(origData);
     isClassNominal = origData.classAttribute().isNominal();
 
     attNumVals = new int[origData.numAttributes()];
@@ -158,25 +158,9 @@ public class DataCache {
 
         // Handling nominal attributes: as of FastRF 0.99, they're sorted as well
         // missing values are coded as Float.MAX_VALUE and go to the end
-        
-//        sortedIndices[a] = new int[numInstances];
-        //int count = 0;
 
         sortedIndices[a] = FastRfUtils.sort(vals[a]); 
-        
-        /*for (int i = 0; i < numInstances; i++) {
-          if ( !this.isValueMissing(a, i) ) {
-            sortedIndices[a][count] = i;
-            count++;
-          }
-        }
 
-        for (int i = 0; i < numInstances; i++) {
-          if ( this.isValueMissing(a, i) ) {
-            sortedIndices[a][count] = i;
-            count++;
-          }
-        }*/
 
       } else { // ----------------------------------------------------- numeric
 
@@ -207,7 +191,6 @@ public class DataCache {
     numClasses = origData.numClasses;       // copied
     numInstances = origData.numInstances;   // copied
 
-    instances = origData.instances;
     attNumVals = origData.attNumVals;       // shallow copied
     instClassValues =
             origData.instClassValues;       // shallow copied
@@ -216,7 +199,9 @@ public class DataCache {
 
     instWeights = origData.instWeights;     // shallow copied
 
+    instances = origData.instances.copy();
     inBag = new boolean[numInstances];      // gets its own inBag array
+
     numInBag = 0;
     
     whatGoesWhere = null;     // this will be created when tree building starts
@@ -256,6 +241,7 @@ public class DataCache {
       
       int curIdx = random.nextInt( numInstances );
       newWeights[curIdx] += instWeights[curIdx];
+      result.instances.get(curIdx).setWeight(newWeights[curIdx]);
       if ( !result.inBag[curIdx] ) {
         result.numInBag++;
         result.inBag[curIdx] = true;

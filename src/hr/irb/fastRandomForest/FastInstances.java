@@ -84,38 +84,4 @@ public class FastInstances extends Instances {
         }
         return newFastInstances;
     }
-
-    // S'ha de fer un sort amb un index d'inici i un altre de fi
-//    @Override
-//    public void sort(int attIndex) {
-//        if(!this.attribute(attIndex).isNominal()) {
-//            double[] vals = new double[this.numInstances()];
-//            Instance[] backup = new Instance[vals.length];
-//
-//            for(int i = 0; i < vals.length; ++i) {
-//                Instance inst = this.instance(i);
-//                backup[i] = inst;
-//                double val = inst.value(attIndex);
-//                if(Utils.isMissingValue(val)) {
-//                    vals[i] = 1.7976931348623157E308D;
-//                } else {
-//                    vals[i] = val;
-//                }
-//            }
-//
-//            int[] sortOrder = Utils.sortWithNoMissingValues(vals);
-//
-//            // TODO Assignar a this.m_Instances un altre ArrayList
-//            // S'ha d'evitar modificar l'objecte en si
-//            for(int i = 0; i < vals.length; ++i) {
-//                this.m_Instances.set(i, backup[sortOrder[i]]);
-////                this.temp_m_Instances.set(i, backup[sortOrder[i]]);
-//            }
-////            this.m_Instances = temp_m_Instances;
-//        } else {
-//            // TODO Mirar tambe si aquest metode modifica l'objecte
-//            this.sortBasedOnNominalAttribute(attIndex);
-//        }
-//
-//    }
 }

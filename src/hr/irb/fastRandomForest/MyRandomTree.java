@@ -1491,6 +1491,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
             int k = m_KValue;
             boolean gainFound = false;
             double[] tempNumericVals = new double[data.numAttributes()];
+//            long t = System.nanoTime();
             while ((windowSize > 0) && (k-- > 0 || !gainFound)) {
 
                 int chosenIndex = random.nextInt(windowSize);
@@ -1523,6 +1524,7 @@ public class MyRandomTree extends AbstractClassifier implements OptionHandler,
                     bestDists = dists[0];
                 }
             }
+//            Benchmark.updateTime(System.nanoTime() - t);
 
             // Find best attribute
             m_Attribute = bestIndex;

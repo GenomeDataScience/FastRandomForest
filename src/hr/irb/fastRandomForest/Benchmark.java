@@ -55,10 +55,16 @@ public class Benchmark {
 
   public static final int numFolds = 10;
 
-  public static long myTime = 0;
+  private static long myTime = 0;
+
+  private static int numNodes = 0;
 
   public static synchronized void updateTime (long elapsedTime) {
     myTime += elapsedTime;
+  }
+
+  public static synchronized void updateNumNodes (int nNodes) {
+    numNodes += nNodes;
   }
 
   // TODO Change the way the output is written. For example, write it in a .csv file
@@ -176,9 +182,11 @@ public class Benchmark {
           accyScore[curCfr][curRun-1] = eval.pctCorrect();
           timeScore[curCfr][curRun-1] = elapsedTime;
 
-          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t",
+          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%6d\t",
                   curCfr, curRun, aucSum / sumClassProps,
-                  eval.pctCorrect(), elapsedTime)); // , myTime/(8*1000000)
+                  eval.pctCorrect(), elapsedTime, myTime/(8*1000000))); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)
+          numNodes = 0;
+          myTime = 0;
 
           System.gc();
 
@@ -230,15 +238,17 @@ public class Benchmark {
 
     // write the results (that are in two StringBuilders) in a .csv file
     try{
-      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt2.csv", "UTF-8");
+      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt21.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt9.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt21.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (IOException e) {
       // do something
     }
+
+//    Runtime.getRuntime().exec("shutdown -s");
   }
 
   
@@ -298,7 +308,6 @@ public class Benchmark {
     }
 
     return result;
-
   }
 
   
