@@ -94,7 +94,7 @@ class FastRandomTree
    * creating/destroying of these arrays.
    */
   protected transient double[][] tempDists;  
-  protected transient double[][] tempDistsOther;  
+  protected transient double[][] tempDistsOther;
   
   
 
@@ -835,8 +835,8 @@ class FastRandomTree
     int[] num = new int[2]; // how many instances go to each branch
 
     // we might possibly want to recycle this array for the whole tree
-    int[] tempArr = new int[ endAt-startAt+1 ]; 
-    
+    int[] tempArr = new int[ endAt-startAt+1 ];
+
     if ( data.isAttrNominal(att) ) { // ============================ if nominal
 
       for (j = startAt; j <= endAt; j++) {
@@ -874,7 +874,7 @@ class FastRandomTree
 
     } else { // =================================================== if numeric
 
-      num = new int[2];
+//      num = new int[2];
 
       for (j = startAt; j <= endAt ; j++) {
         
@@ -919,10 +919,10 @@ class FastRandomTree
     for (int a : selectedAttributes) { // xxxxxxxxxx attr by attr
 
       // the first index of the sortedIndices in the above branch, and the first index in the below
-      int startAbove = 0, startBelow = num[0]; // always only 2 sub-branches, remember where second starts
+      int startAbove = startAt, startBelow = 0; // always only 2 sub-branches, remember where second starts
       
-      Arrays.fill(tempArr, 0);
-      
+//      Arrays.fill(tempArr, 0);
+
       // fill them with stuff by looking at goesWhere array
       for (j = startAt; j <= endAt; j++) {
         
@@ -930,7 +930,8 @@ class FastRandomTree
         int branch = data.whatGoesWhere[ inst ];  // can be only 0 or 1
         
         if ( branch==0 ) {
-          tempArr[ startAbove ] = sortedIndices[a][j];
+//          tempArr[ startAbove ] = sortedIndices[a][j];
+          sortedIndices[a][startAbove] = sortedIndices[a][j];
           startAbove++;
         } else {
           tempArr[ startBelow ] = sortedIndices[a][j];
@@ -939,7 +940,7 @@ class FastRandomTree
       }
       
       // now copy the tempArr into the sortedIndices, thus overwriting it
-      System.arraycopy( tempArr, 0, sortedIndices[a], startAt, endAt-startAt+1 );
+      System.arraycopy( tempArr, 0, sortedIndices[a], startAt+num[0], num[1] );
 
     } // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx end for attr by attr
     
@@ -1269,8 +1270,8 @@ class FastRandomTree
         currDist[0][ data.instClassValues[ prevInst ] ]
                 += data.instWeights[ prevInst ] ;
         currDist[1][ data.instClassValues[ prevInst ] ]
-                -= data.instWeights[ prevInst ] ;        
-        
+                -= data.instWeights[ prevInst ] ;
+
         // do not allow splitting between two instances with the same value
         if ( data.vals[attToExamine][inst] > data.vals[attToExamine][prevInst] ) {
 
