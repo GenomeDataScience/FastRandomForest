@@ -67,7 +67,6 @@ public class Benchmark {
     numNodes += nNodes;
   }
 
-  // TODO Change the way the output is written. For example, write it in a .csv file
   public static void main(String[] args) throws Exception {
 
     List<File> trainFiles =
@@ -182,9 +181,9 @@ public class Benchmark {
           accyScore[curCfr][curRun-1] = eval.pctCorrect();
           timeScore[curCfr][curRun-1] = elapsedTime;
 
-          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%6d\t",
+          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%.2f\t",
                   curCfr, curRun, aucSum / sumClassProps,
-                  eval.pctCorrect(), elapsedTime, myTime/(8*1000000))); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)
+                  eval.pctCorrect(), elapsedTime, numNodes/(500.0 * numFolds))); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)
           numNodes = 0;
           myTime = 0;
 
@@ -241,7 +240,7 @@ public class Benchmark {
       PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt21.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt21.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt24.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (IOException e) {

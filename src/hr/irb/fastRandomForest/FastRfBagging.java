@@ -23,6 +23,7 @@
 
 package hr.irb.fastRandomForest;
 
+import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.RandomizableIteratedSingleClassifierEnhancer;
 import weka.core.*;
@@ -154,6 +155,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
 //      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)*2 + 1;
       int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes)*(1 + 8*Math.exp(-myData.numAttributes/370.0)));
 //      int nAttrVirtual = myData.numAttributes - 1;
+//      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)/2;
       nAttrVirtual = nAttrVirtual >= myData.numAttributes ? myData.numAttributes : nAttrVirtual;
 
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
@@ -193,7 +195,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       // calc OOB error?
       if (getCalcOutOfBag() || getComputeImportances()) {
         //m_OutOfBagError = computeOOBError(data, inBag, threadPool);
-        m_OutOfBagError = computeOOBError( myData, inBag, threadPool);
+        m_OutOfBagError = computeOOBError( myData, inBag, threadPool, m_Classifiers);
       } else {
         m_OutOfBagError = 0;
       }
@@ -211,11 +213,43 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
             //double sError = computeOOBError(FastRfUtils.scramble(data, dataCopy, j, permutation), inBag, threadPool);
             //double sError = computeOOBError(data, inBag, threadPool, j, 0);
             float[] unscrambled = myData.scrambleOneAttribute(j, random);
-            double sError = computeOOBError(myData, inBag, threadPool);
+            double sError = computeOOBError(myData, inBag, threadPool, m_Classifiers);
             myData.vals[j] = unscrambled; // restore the original state
             m_FeatureImportances[j] = sError - m_OutOfBagError;
           }
           //m_FeatureNames[j] = data.attribute(j).name();
+        }
+      }
+
+      if (true) {
+        m_FastFeatImp = new double[data.numAttributes()];
+        for (int j = 0; j < data.numAttributes(); ++j) {
+          if (myData.classIndex == j) {
+            continue;
+          }
+          ArrayList<Integer> indicesWithAttribute = new ArrayList<>();
+          ArrayList<Integer> indicesWithoutAttribute = new ArrayList<>();
+          for (int k = 0; k < m_Classifiers.length; ++k) {
+            FastRandomTree frt = (FastRandomTree) m_Classifiers[k];
+            if (frt.setSelectedAttr.contains(j)) indicesWithAttribute.add(k);
+            else indicesWithoutAttribute.add(k);
+          }
+          boolean[][] inBagWithAttr = new boolean[indicesWithAttribute.size()][];
+          Classifier[] clssWithAttr = new Classifier[indicesWithAttribute.size()];
+          for (int k = 0; k < indicesWithAttribute.size(); ++k) {
+            inBagWithAttr[k] = inBag[indicesWithAttribute.get(k)];
+            clssWithAttr[k] = m_Classifiers[indicesWithAttribute.get(k)];
+          }
+          boolean[][] inBagWithoutAttr = new boolean[indicesWithoutAttribute.size()][];
+          Classifier[] clssWithoutAttr = new Classifier[indicesWithoutAttribute.size()];
+          for (int k = 0; k < indicesWithoutAttribute.size(); ++k) {
+            inBagWithoutAttr[k] = inBag[indicesWithoutAttribute.get(k)];
+            clssWithoutAttr[k] = m_Classifiers[indicesWithoutAttribute.get(k)];
+          }
+          double errorWithAttr = computeOOBError(myData, inBagWithAttr, threadPool, clssWithAttr);
+          double errorWithoutAttr = computeOOBError(myData, inBagWithoutAttr, threadPool, clssWithoutAttr);
+          double diff = errorWithoutAttr - errorWithAttr;
+          m_FastFeatImp[j] = diff;
         }
       }
 
@@ -284,15 +318,15 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    *
    * @return the oob error
    */
-  private double computeOOBError( DataCache data,
+  private double computeOOBError(DataCache data,
                                  boolean[][] inBag,
-                                 ExecutorService threadPool ) throws InterruptedException, ExecutionException {
+                                 ExecutorService threadPool, Classifier[] classifiers) throws InterruptedException, ExecutionException {
 
 
     List<Future<Double>> votes =
       new ArrayList<Future<Double>>(data.numInstances);
     for (int i = 0; i < data.numInstances; i++) {
-      VotesCollectorDataCache aCollector = new VotesCollectorDataCache(m_Classifiers, i, data, inBag);
+      VotesCollectorDataCache aCollector = new VotesCollectorDataCache(classifiers, i, data, inBag);
       votes.add(threadPool.submit(aCollector));
     }
 
@@ -329,6 +363,8 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    * Whether compute the importances or not.
    */
   private boolean m_computeImportances = true;
+
+  private double[] m_FastFeatImp;
 
   /**
    * @return compute feature importances?

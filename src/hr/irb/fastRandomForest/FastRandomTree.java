@@ -28,6 +28,7 @@ import weka.core.*;
 import weka.core.Capabilities.Capability;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Random;
 
 
@@ -54,7 +55,9 @@ class FastRandomTree
   /** for serialization */
   static final long serialVersionUID = 8934314652175299375L;
 
-  public static final double cnst = -999999999;
+  public static final double cnst = -1;
+
+  public HashSet<Integer> setSelectedAttr;
   
   /** The subtrees appended to this tree (node). */
   protected AbstractClassifier[] m_Successors;
@@ -199,6 +202,9 @@ class FastRandomTree
     for (int i = 0; i < data.numInstances; i++) {
       classProbs[data.instClassValues[i]] += data.instWeights[i];
     }
+
+    setSelectedAttr = new HashSet<>(data.selectedAttributes.length);
+    for (int attr : data.selectedAttributes) setSelectedAttr.add(attr);
 
     // prepare the DataCache by:
     // ... creating an array for the whatGoesWhere field of the data
@@ -397,7 +403,14 @@ class FastRandomTree
 
   private int countNodes() {
     if (m_Attribute != -1) {
-      return ((FastRandomTree) m_Successors[0]).countNodes() + ((FastRandomTree) m_Successors[1]).countNodes() + 1;
+      int result = 1;
+      if (m_Successors[0] instanceof FastRandomTree)  {
+        result += ((FastRandomTree) m_Successors[0]).countNodes();
+      }
+      if (m_Successors[1] instanceof FastRandomTree)  {
+        result += ((FastRandomTree) m_Successors[1]).countNodes();
+      }
+      return result;
     } else {
       return 1;
     }
@@ -605,9 +618,9 @@ class FastRandomTree
           auxTree.setNumFolds(0);
           // Take only the instances that belong to this node. Drop the others.
           if (i == 0) {
-            data.instances.takeInstances(sortedIndices[data.selectedAttributes[m_Attribute]], startAt, belowTheSplitStartsAt - 1);
+            data.instances.takeInstances(sortedIndices[m_Attribute], startAt, belowTheSplitStartsAt - 1);
           } else {
-            data.instances.takeInstances(sortedIndices[data.selectedAttributes[m_Attribute]], belowTheSplitStartsAt, endAt);
+            data.instances.takeInstances(sortedIndices[m_Attribute], belowTheSplitStartsAt, endAt);
           }
           try {
 //            auxTree.buildClassifier(data.instances);
