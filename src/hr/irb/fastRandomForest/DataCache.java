@@ -199,7 +199,7 @@ public class DataCache {
 
     instWeights = origData.instWeights;     // shallow copied
 
-    instances = origData.instances.copy();
+//    instances = origData.instances.copy();
     inBag = new boolean[numInstances];      // gets its own inBag array
 
     numInBag = 0;
@@ -241,7 +241,7 @@ public class DataCache {
       
       int curIdx = random.nextInt( numInstances );
       newWeights[curIdx] += instWeights[curIdx];
-      result.instances.get(curIdx).setWeight(newWeights[curIdx]);
+//      result.instances.get(curIdx).setWeight(newWeights[curIdx]);
       if ( !result.inBag[curIdx] ) {
         result.numInBag++;
         result.inBag[curIdx] = true;

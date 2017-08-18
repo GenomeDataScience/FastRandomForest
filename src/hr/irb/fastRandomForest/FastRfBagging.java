@@ -153,10 +153,21 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     try {
 //      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes) * Utils.log2(myData.numAttributes));
 //      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)*2 + 1;
-      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes)*(1 + 8*Math.exp(-myData.numAttributes/370.0)));
+//      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes)*(1 + 8*Math.exp(-myData.numAttributes/370.0)));
+//      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes) + 65;
+      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes*2) + 60;
+//      nAttrVirtual = 80;
+//      nAttrVirtual = myData.numAttributes - 1;
 //      int nAttrVirtual = myData.numAttributes - 1;
 //      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)/2;
-      nAttrVirtual = nAttrVirtual >= myData.numAttributes ? myData.numAttributes : nAttrVirtual;
+//      motherForest.m_KValue = (int) Utils.log2(myData.numAttributes + 1024) + 7;
+      motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 5;
+//      motherForest.m_KValue = 7;
+//      motherForest.m_KValue = (int) Math.sqrt(myData.numAttributes);
+      if (nAttrVirtual >= myData.numAttributes) {
+        nAttrVirtual = myData.numAttributes - 1;
+        motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 1;
+      }
 
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
 
@@ -221,7 +232,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
         }
       }
 
-      if (true) {
+      if (false) {
         m_FastFeatImp = new double[data.numAttributes()];
         for (int j = 0; j < data.numAttributes(); ++j) {
           if (myData.classIndex == j) {

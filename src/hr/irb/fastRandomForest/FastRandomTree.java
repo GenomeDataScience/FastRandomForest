@@ -68,7 +68,7 @@ class FastRandomTree
   protected FastRandomForest m_MotherForest;
 
   /** The attribute to split on. */
-  protected int m_Attribute = -1;
+  protected int m_Attribute = -10000;
 
   /** The split point. */
   protected double m_SplitPoint = Double.NaN;
@@ -398,7 +398,8 @@ class FastRandomTree
   }
   
   private boolean keepFastRandomTree (int nInstancesNewBranch) {
-    return (getKValue() * Utils.log2(nInstancesNewBranch) / (getKValue() + data.selectedAttributes.length)) > cnst;
+    if (nInstancesNewBranch == 0) return true;
+    else return (getKValue() * Utils.log2(nInstancesNewBranch) / (getKValue() + data.selectedAttributes.length)) > cnst;
   }
 
   private int countNodes() {
@@ -930,6 +931,7 @@ class FastRandomTree
     else selectedAttributes = new int[]{att};
 
     for (int a : selectedAttributes) { // xxxxxxxxxx attr by attr
+//      if (data.isAttrNominal(a) && data.attNumVals[a] <= 2 && a != selectedAttributes[0]) continue;
 
       // the first index of the sortedIndices in the above branch, and the first index in the below
       int startAbove = startAt, startBelow = 0; // always only 2 sub-branches, remember where second starts
@@ -1187,12 +1189,17 @@ class FastRandomTree
       // note: if we have only two levels, it doesn't matter which one we "split out"
       // we can thus safely check only the first one
       if ( numLvls <= 2 ) {
-  
-        bestLvl = 0; // this means that the category with index 0 always 
+        // TODO It fails when there are missing values
+        bestLvl = 0; // this means that the category with index 0 always
+//        sortedIndicesOfAtt = data.sortedIndices[data.selectedAttributes[0]];
+//        data.sortedIndices[attToExamine] = sortedIndicesOfAtt;
         // goes 'above' the split and category with index 1 goes 'below' the split
         for (i = startAt; i <= lastNonmissingValIdx; i++) {
           int inst = sortedIndicesOfAtt[i];
-          dist[ (int)data.vals[attToExamine][inst] ][ data.instClassValues[inst] ] += data.instWeights[inst];        
+          dist[ (int)data.vals[attToExamine][inst] ][ data.instClassValues[inst] ] += data.instWeights[inst];
+//          if (! data.isValueMissing(attToExamine, inst)) {
+//            dist[ (int)data.vals[attToExamine][inst] ][ data.instClassValues[inst] ] += data.instWeights[inst];
+//          }
         }
         
       } else {   // for >2 levels, we have to search different splits
