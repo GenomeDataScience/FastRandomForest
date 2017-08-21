@@ -854,8 +854,8 @@ class FastRandomTree
     if ( data.isAttrNominal(att) ) { // ============================ if nominal
 
       for (j = startAt; j <= endAt; j++) {
-        
-        int inst = sortedIndices[data.selectedAttributes[0]][j];
+
+        int inst = sortedIndices[data.myAtt][j];
 
         if ( data.isValueMissing(att, inst) ) { // ---------- has missing value
 
@@ -891,9 +891,9 @@ class FastRandomTree
 //      num = new int[2];
 
       for (j = startAt; j <= endAt ; j++) {
-        
+
         int inst = sortedIndices[att][j];
-        
+
         //Instance inst = data.instance(sortedIndices[att][j]);
 
         if ( data.isValueMissing(att, inst) ) { // ---------- has missing value
@@ -911,7 +911,7 @@ class FastRandomTree
         } else { // ----------------------------- does not have missing value
 
           int branch = ( data.vals[att][inst] < splitPoint ) ? 0 : 1;
-          
+
           data.whatGoesWhere[ inst ] = branch;
           num[ branch ]++;
 
@@ -921,30 +921,29 @@ class FastRandomTree
 
     }  // ============================================ end if nominal / numeric
 
-//    // TODO Test if this works
-//    boolean keepTreeBranch0 = keepFastRandomTree(num[0]);
-//    boolean keepTreeBranch1 = keepFastRandomTree(num[1]);
-//    int[] selectedAttributes;
-//
-//    if (keepTreeBranch0 || keepTreeBranch1) selectedAttributes = data.selectedAttributes;
-//    // we don't need to rebuild the sortedIndices[][] matrix if we will change both branches to MyRandomTree
-//    else selectedAttributes = new int[]{att};
+    // TODO Test if this works
+    boolean keepTreeBranch0 = keepFastRandomTree(num[0]);
+    boolean keepTreeBranch1 = keepFastRandomTree(num[1]);
+    int[] selectedAttributes;
 
-    for (int a : data.selectedAttributes) { // xxxxxxxxxx attr by attr
-//      if (data.isAttrNominal(a) && data.attNumVals[a] <= 2 && a != selectedAttributes[0]) continue;
-      if (a != data.selectedAttributes[0] && data.isAttrNominal(a)) continue;
+    if (keepTreeBranch0 || keepTreeBranch1) selectedAttributes = data.selectedAttributes;
+      // we don't need to rebuild the sortedIndices[][] matrix if we will change both branches to MyRandomTree
+    else selectedAttributes = new int[]{att};
+
+    for (int a : selectedAttributes) { // xxxxxxxxxx attr by attr
+      if (a != data.myAtt && data.isAttrNominal(a)) continue;
 
       // the first index of the sortedIndices in the above branch, and the first index in the below
       int startAbove = startAt, startBelow = 0; // always only 2 sub-branches, remember where second starts
-      
+
 //      Arrays.fill(tempArr, 0);
 
       // fill them with stuff by looking at goesWhere array
       for (j = startAt; j <= endAt; j++) {
-        
+
         int inst = sortedIndices[ a ][j];
         int branch = data.whatGoesWhere[ inst ];  // can be only 0 or 1
-        
+
         if ( branch==0 ) {
 //          tempArr[ startAbove ] = sortedIndices[a][j];
           sortedIndices[a][startAbove] = sortedIndices[a][j];
@@ -954,14 +953,14 @@ class FastRandomTree
           startBelow++;
         }
       }
-      
+
       // now copy the tempArr into the sortedIndices, thus overwriting it
       System.arraycopy( tempArr, 0, sortedIndices[a], startAt+num[0], num[1] );
 
     } // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx end for attr by attr
-    
+
     return startAt+num[0]; // the first index of "below the split" instances
-    
+
   }
 
 
@@ -1145,10 +1144,10 @@ class FastRandomTree
    * @param endAt Index in sortedIndicesOfAtt; do not touch anything after this index.
    */
   protected double distributionSequentialAtt( double[] propsBestAtt, double[][] distsBestAtt,
-          double scoreBestAtt, int attToExamine, int[] sortedIndicesOfAtt, int startAt, int endAt, double[] classProbs ) {
+                                              double scoreBestAtt, int attToExamine, int[] sortedIndicesOfAtt, int startAt, int endAt, double[] classProbs ) {
 
     double splitPoint = -Double.MAX_VALUE;
-    
+
     // a contingency table of the split point vs class. 
     double[][] dist = this.tempDists;
     Arrays.fill( dist[0], 0.0 ); Arrays.fill( dist[1], 0.0 );
@@ -1157,63 +1156,87 @@ class FastRandomTree
     for (int i = 0; i < classProbs.length; ++i) {
       currDist[1][i] = classProbs[i];
     }
-    
-    int i; 
+    //double[][] dist = new double[2][data.numClasses];
+    //double[][] currDist = new double[2][data.numClasses];
+
+    int i;
     int sortedIndicesOfAttLength = endAt - startAt + 1;
-    
+
+    // find how many missing values we have for this attribute (they're always at the end)
+    // update the distribution to the future second son
+    int lastNonmissingValIdx = endAt;
+//    for (int j = endAt; j >= startAt; j-- ) {
+//      int inst = sortedIndicesOfAtt[j];
+//      if ( data.isValueMissing(attToExamine, sortedIndicesOfAtt[j]) ) {
+//        currDist[1][data.instClassValues[inst]] -= data.instWeights[inst];
+//        lastNonmissingValIdx = j-1;
+//      } else {
+//        break;
+//      }
+//    }
+//    if ( lastNonmissingValIdx < startAt ) {  // only missing values in this feature??
+//      return Double.NaN; // we cannot split on it
+//    }
+
+
     if ( data.isAttrNominal(attToExamine) ) { // ====================== nominal attributes
 
       // 0.99: new routine - makes a one-vs-all split on categorical attributes
-      sortedIndicesOfAtt = data.sortedIndices[data.selectedAttributes[0]];
-      
-      int numLvls = data.attNumVals[attToExamine]; 
+
+      int numLvls = data.attNumVals[attToExamine];
       int bestLvl = 0; // the index of the category which is best to "split out"
-      
+      sortedIndicesOfAtt = data.sortedIndices[data.myAtt];
+
       // note: if we have only two levels, it doesn't matter which one we "split out"
       // we can thus safely check only the first one
       if ( numLvls <= 2 ) {
+        // TODO It fails when there are missing values
         bestLvl = 0; // this means that the category with index 0 always
         // goes 'above' the split and category with index 1 goes 'below' the split
-        // TODO comprovar que hi ha algun valor que no es missing value
         for (i = startAt; i <= endAt; i++) {
           int inst = sortedIndicesOfAtt[i];
-//          dist[ (int)data.vals[attToExamine][inst] ][ data.instClassValues[inst] ] += data.instWeights[inst];
           if (! data.isValueMissing(attToExamine, inst)) {
             dist[ (int)data.vals[attToExamine][inst] ][ data.instClassValues[inst] ] += data.instWeights[inst];
           }
         }
-        
+
       } else {   // for >2 levels, we have to search different splits
 
-        double[][] levelsClasses = new double[numLvls][data.numClasses];
-        for (i = startAt; i <= endAt; i++) {
-          int inst = sortedIndicesOfAtt[i];
-          if (! data.isValueMissing(attToExamine, inst)) {
-            levelsClasses[(int) data.vals[attToExamine][inst]] [data.instClassValues[inst]] += data.instWeights[inst];
-          } else {
-            currDist[1][data.instClassValues[inst]] -= data.instWeights[inst];
-          }
-        }
-        // TODO comprovar que hi ha algun valor que no es missing value
-
+        // begin with moving all instances into second subset ("below split")
+//        for (int j = startAt; j <= lastNonmissingValIdx; j++) {
+//          int inst = sortedIndicesOfAtt[j];
+//          currDist[1][ data.instClassValues[inst] ] += data.instWeights[inst];
+//        }
         // create a default dist[] which we'll modify after we find the best class to split out
         copyDists(currDist, dist);
-        
-        double currVal = -Double.MAX_VALUE; // current value of splitting criterion 
+
+        double currVal = -Double.MAX_VALUE; // current value of splitting criterion
         double bestVal = -Double.MAX_VALUE; // best value of splitting criterion
         int lastSeen = startAt;  // used to avoid looping through all instances for every lvl
-        
+
         for ( int lvl = 0; lvl < numLvls; lvl++ ) {
 
           // reset the currDist to the default (everything "below split") - conveniently stored in dist[][]
           copyDists(dist, currDist);
-          currDist[0] = levelsClasses[lvl];
-          for (i = 0; i < data.numClasses; ++i) {
-            currDist[1][i] -= levelsClasses[lvl][i];
+
+          for (i = lastSeen; i <= lastNonmissingValIdx; i++) {
+
+            lastSeen = i;
+            int inst = sortedIndicesOfAtt[i];
+            if ( (int)data.vals[attToExamine][inst] < lvl ) {
+              continue;
+            } else if ( (int)data.vals[attToExamine][inst] == lvl ) {
+              // move to "above split" from "below split"
+              currDist[0][ data.instClassValues[ inst ] ] += data.instWeights[ inst ] ;
+              currDist[1][ data.instClassValues[ inst ] ] -= data.instWeights[ inst ] ;
+            } else {
+              break;  // no need to loop forward, no more instances of this category
+            }
+
           }
 
           // we filled the "dist" for the current level, find score and see if we like it
-          currVal = -SplitCriteria.entropyConditionedOnRows(currDist);          
+          currVal = -SplitCriteria.entropyConditionedOnRows(currDist);
           if ( currVal > bestVal ) {
             bestVal = currVal;
             bestLvl = lvl;
@@ -1221,37 +1244,37 @@ class FastRandomTree
 
         }  // examine how well "splitting out" of individual levels works for us
 
+
         // remember the contingency table from the best "lvl" and store it in "dist"
-        dist[0] = levelsClasses[bestLvl];
-        for (i = 0; i < data.numClasses; ++i) {
-          dist[1][i] -= levelsClasses[bestLvl][i];
+        for (i = startAt; i <= lastNonmissingValIdx; i++) {
+
+          int inst = sortedIndicesOfAtt[i];
+          if ( (int)data.vals[attToExamine][inst] == bestLvl ) {
+            // move to "above split" from "below split"
+            dist[0][ data.instClassValues[ inst ] ] += data.instWeights[ inst ] ;
+            dist[1][ data.instClassValues[ inst ] ] -= data.instWeights[ inst ] ;
+          } else {
+            break;  // no need to loop forward, no more instances of this category
+          }
+
         }
+
       }
-      
+
       splitPoint = bestLvl; // signals we've found a sensible split point; by
-                            // definition, a split on a nominal attribute 
-                            // will always be sensible 
-      
+      // definition, a split on a nominal attribute
+      // will always be sensible
+
     } else { // ============================================ numeric attributes
 
-      // missing values
-      int lastNonmissingValIdx = endAt;
-      for (int j = endAt; j >= startAt; j-- ) {
-        int inst = sortedIndicesOfAtt[j];
-        if ( data.isValueMissing(attToExamine, sortedIndicesOfAtt[j]) ) {
-          currDist[1][data.instClassValues[inst]] -= data.instWeights[inst];
-          lastNonmissingValIdx = j-1;
-        } else {
-          break;
-        }
-      }
-      if ( lastNonmissingValIdx < startAt ) {  // only missing values in this feature??
-        return Double.NaN; // we cannot split on it
-      }
-
+      // begin with moving all instances into second subset ("below split")
+//      for (int j = startAt; j <= lastNonmissingValIdx; j++) {
+//        int inst = sortedIndicesOfAtt[j];
+//        currDist[1][ data.instClassValues[inst] ] += data.instWeights[inst];
+//      }
       copyDists(currDist, dist);
 
-      double currVal = -Double.MAX_VALUE; // current value of splitting criterion 
+      double currVal = -Double.MAX_VALUE; // current value of splitting criterion
       double bestVal = -Double.MAX_VALUE; // best value of splitting criterion
       int bestI = 0; // the value of "i" BEFORE which the splitpoint is placed
 
@@ -1261,10 +1284,11 @@ class FastRandomTree
         int inst = sortedIndicesOfAtt[i];
 
         int prevInst = sortedIndicesOfAtt[i-1];
-        int prevClass = data.instClassValues[ prevInst ];
 
-        currDist[0][ prevClass ] += data.instWeights[ prevInst ] ;
-        currDist[1][ prevClass ] -= data.instWeights[ prevInst ] ;
+        currDist[0][ data.instClassValues[ prevInst ] ]
+                += data.instWeights[ prevInst ] ;
+        currDist[1][ data.instClassValues[ prevInst ] ]
+                -= data.instWeights[ prevInst ] ;
 
         // do not allow splitting between two instances with the same value
         if ( data.vals[attToExamine][inst] > data.vals[attToExamine][prevInst] ) {
@@ -1272,11 +1296,12 @@ class FastRandomTree
           // we want the lowest impurity after split; at this point, we don't
           // really care what we've had before spliting
           currVal = -SplitCriteria.entropyConditionedOnRows(currDist);
+
           if (currVal > bestVal) {
             bestVal = currVal;
             bestI = i;
           }
-          
+
         }
 
       }                                             // ------- end trying split points
@@ -1285,7 +1310,7 @@ class FastRandomTree
       /*
        * Determine the best split point:
        * bestI == 0 only if all instances had missing values, or there were
-       * less than 2 instances; splitPoint will remain set as -Double.MAX_VALUE. 
+       * less than 2 instances; splitPoint will remain set as -Double.MAX_VALUE.
        * This is not really a useful split, as all of the instances are 'below'
        * the split line, but at least it's formally correct. And the dists[]
        * also has a default value set previously.
@@ -1296,36 +1321,36 @@ class FastRandomTree
         int instJustAfterSplit = sortedIndicesOfAtt[bestI];
         splitPoint = ( data.vals[ attToExamine ][ instJustAfterSplit ]
                 + data.vals[ attToExamine ][ instJustBeforeSplit ] ) / 2.0;
-        
-        // now make the correct dist[] (for the best split point) from the 
-        // default dist[] (all instances in the second branch, by iterating 
+
+        // now make the correct dist[] (for the best split point) from the
+        // default dist[] (all instances in the second branch, by iterating
         // through instances until we reach bestI, and then stop.
         for ( int ii = startAt; ii < bestI; ii++ ) {
           int inst = sortedIndicesOfAtt[ii];
           dist[0][ data.instClassValues[ inst ] ] += data.instWeights[ inst ] ;
-          dist[1][ data.instClassValues[ inst ] ] -= data.instWeights[ inst ] ;                  
+          dist[1][ data.instClassValues[ inst ] ] -= data.instWeights[ inst ] ;
         }
-        
-      }      
-            
+
+      }
+
     } // ================================================== nominal or numeric?
 
-    
+
     // compute total weights for each branch (= props)
     // again, we reuse the tempProps of the tree not to create/destroy new arrays
     double[] props = this.tempProps;
     countsToFreqs(dist, props);  // props gets overwritten, previous contents don't matters
 
 
-//    // distribute *counts* of instances with missing values using the "props"
-//    i = lastNonmissingValIdx + 1; /// start 1 after the non-missing val (if there is anything)
-//    while ( i <= endAt ) {
-//      int inst = sortedIndicesOfAtt[i];
-//      dist[ 0 ][ data.instClassValues[inst] ] += props[ 0 ] * data.instWeights[ inst ] ;
-//      dist[ 1 ][ data.instClassValues[inst] ] += props[ 1 ] * data.instWeights[ inst ] ;
-//      i++;
-//    }
-    
+    // distribute *counts* of instances with missing values using the "props"
+    i = lastNonmissingValIdx + 1; /// start 1 after the non-missing val (if there is anything)
+    while ( i <= endAt ) {
+      int inst = sortedIndicesOfAtt[i];
+      dist[ 0 ][ data.instClassValues[inst] ] += props[ 0 ] * data.instWeights[ inst ] ;
+      dist[ 1 ][ data.instClassValues[inst] ] += props[ 1 ] * data.instWeights[ inst ] ;
+      i++;
+    }
+
     // update the distribution after split and best split point
     // but ONLY if better than the previous one -- we need to recalculate the
     // entropy (because this changes after redistributing the instances with 
@@ -1338,10 +1363,10 @@ class FastRandomTree
       return splitPoint;
     } else {
       // returns a NaN instead of the splitpoint if the attribute was not better than a previous one.
-      return Double.NaN;  
+      return Double.NaN;
     }
-    
-    
+
+
   }
 
 

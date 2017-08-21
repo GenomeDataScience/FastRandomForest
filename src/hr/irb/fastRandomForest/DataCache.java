@@ -43,6 +43,10 @@ public class DataCache {
   /** Array with the indices of the selected attributes of the instances */
   protected int[] selectedAttributes;
 
+  protected int[] attInSortedIndices;
+
+  protected int myAtt;
+
   /** The dataset, first indexed by attribute, then by instance. */
   protected final float[][] vals;
 
@@ -305,7 +309,10 @@ public class DataCache {
   protected void createInBagSortedIndicesNew() {
 
     int[][] newSortedIndices = new int[ numAttributes ][ ];
+    myAtt = selectedAttributes[0];
+
     for (int a : selectedAttributes) {
+      if (a != myAtt && isAttrNominal(a)) continue;
       newSortedIndices[a] = new int[this.numInBag];
 
       int inBagIdx = 0;
