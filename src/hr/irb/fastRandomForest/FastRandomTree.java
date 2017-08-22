@@ -855,7 +855,7 @@ class FastRandomTree
 
       for (j = startAt; j <= endAt; j++) {
 
-        int inst = sortedIndices[data.myAtt][j];
+        int inst = sortedIndices[data.attInSortedIndices[0]][j];
 
         if ( data.isValueMissing(att, inst) ) { // ---------- has missing value
 
@@ -930,8 +930,7 @@ class FastRandomTree
       // we don't need to rebuild the sortedIndices[][] matrix if we will change both branches to MyRandomTree
     else selectedAttributes = new int[]{att};
 
-    for (int a : selectedAttributes) { // xxxxxxxxxx attr by attr
-      if (a != data.myAtt && data.isAttrNominal(a)) continue;
+    for (int a : data.attInSortedIndices) { // xxxxxxxxxx attr by attr
 
       // the first index of the sortedIndices in the above branch, and the first index in the below
       int startAbove = startAt, startBelow = 0; // always only 2 sub-branches, remember where second starts
@@ -1156,8 +1155,6 @@ class FastRandomTree
     for (int i = 0; i < classProbs.length; ++i) {
       currDist[1][i] = classProbs[i];
     }
-    //double[][] dist = new double[2][data.numClasses];
-    //double[][] currDist = new double[2][data.numClasses];
 
     int i;
     int sortedIndicesOfAttLength = endAt - startAt + 1;
@@ -1185,7 +1182,7 @@ class FastRandomTree
 
       int numLvls = data.attNumVals[attToExamine];
       int bestLvl = 0; // the index of the category which is best to "split out"
-      sortedIndicesOfAtt = data.sortedIndices[data.myAtt];
+      sortedIndicesOfAtt = data.sortedIndices[data.attInSortedIndices[0]];
 
       // note: if we have only two levels, it doesn't matter which one we "split out"
       // we can thus safely check only the first one

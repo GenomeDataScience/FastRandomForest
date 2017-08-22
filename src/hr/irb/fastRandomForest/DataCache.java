@@ -45,8 +45,6 @@ public class DataCache {
 
   protected int[] attInSortedIndices;
 
-  protected int myAtt;
-
   /** The dataset, first indexed by attribute, then by instance. */
   protected final float[][] vals;
 
@@ -256,6 +254,7 @@ public class DataCache {
     // select the subset of features
     result.selectedAttributes = new int[nAttrVirtual];
     int[] permIndices = FastRfUtils.randomPermutation(numAttributes, random);
+    int nAttInSortedIndices = 0;
     for (int i = 0; i < nAttrVirtual; ++i) {
       int a = permIndices[i];
       if (a == classIndex)
@@ -263,7 +262,9 @@ public class DataCache {
         a = permIndices[nAttrVirtual];
 
       result.selectedAttributes[i] = a; // it will never have the attribute class
+      nAttInSortedIndices += isAttrNominal(a) ? 0 : 1;
     }
+    result.attInSortedIndices = new int[nAttInSortedIndices];
 
     // Time random access to the weights of all the instances:
     //    - For newWeights[] ~ 18540 ns
@@ -309,10 +310,14 @@ public class DataCache {
   protected void createInBagSortedIndicesNew() {
 
     int[][] newSortedIndices = new int[ numAttributes ][ ];
-    myAtt = selectedAttributes[0];
+    boolean allCategorical = attInSortedIndices.length == 0;
+    if (allCategorical) attInSortedIndices = new int[1];
+    int idx = 0;
 
     for (int a : selectedAttributes) {
-      if (a != myAtt && isAttrNominal(a)) continue;
+      if (!(allCategorical && a == selectedAttributes[0]) && isAttrNominal(a)) continue;
+
+      attInSortedIndices[idx] = a; ++idx;
       newSortedIndices[a] = new int[this.numInBag];
 
       int inBagIdx = 0;
