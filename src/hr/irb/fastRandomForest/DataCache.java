@@ -83,6 +83,8 @@ public class DataCache {
   /** Used in training of FastRandomTrees. */
   protected int[] whatGoesWhere = null;
 
+  protected int[] instancesMissVal;
+
   protected boolean isClassNominal;
   
   /**
@@ -310,8 +312,10 @@ public class DataCache {
   protected void createInBagSortedIndicesNew() {
 
     int[][] newSortedIndices = new int[ numAttributes ][ ];
+    instancesMissVal = new int[numInBag];
     boolean allCategorical = attInSortedIndices.length == 0;
     if (allCategorical) attInSortedIndices = new int[1];
+//    attInSortedIndices = new int[]{selectedAttributes[0]};
     int idx = 0;
 
     for (int a : selectedAttributes) {
