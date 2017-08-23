@@ -183,7 +183,7 @@ public class Benchmark {
 
           s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%.2f\t",
                   curCfr, curRun, aucSum / sumClassProps,
-                  eval.pctCorrect(), elapsedTime, numNodes/(500.0 * numFolds))); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)
+                  eval.pctCorrect(), elapsedTime, 0.0)); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)    Utils.log2(numNodes/(500.0 * numFolds))
           numNodes = 0;
           myTime = 0;
 
@@ -237,10 +237,10 @@ public class Benchmark {
 
     // write the results (that are in two StringBuilders) in a .csv file
     try{
-      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt21.csv", "UTF-8");
+      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt48.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt24.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt55.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (IOException e) {

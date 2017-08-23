@@ -130,7 +130,7 @@ public class SplitCriteria {
   /**
    * Help method for computing entropy.
    */
-  private static double lnFunc(double num) {
+  public static double lnFunc(double num) {
 
     if (num <= 1e-6) {
       return 0;

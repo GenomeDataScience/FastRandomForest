@@ -43,7 +43,12 @@ public class DataCache {
   /** Array with the indices of the selected attributes of the instances */
   protected int[] selectedAttributes;
 
+  /** Indices of the attributes that are in sortedIndices. Categorical attributes can be selected for
+   * a tree but they probably not be represented in sortedIndices */
   protected int[] attInSortedIndices;
+
+  /** Matrix that will be used for a tree to compute the distribution for a categorical feature */
+  protected double[][] levelsClasses;
 
   /** The dataset, first indexed by attribute, then by instance. */
   protected final float[][] vals;
@@ -83,6 +88,8 @@ public class DataCache {
   /** Used in training of FastRandomTrees. */
   protected int[] whatGoesWhere = null;
 
+  /** Array that will be used for a tree to store the indices of the instances that have a missing values for
+   * a gives attribute */
   protected int[] instancesMissVal;
 
   protected boolean isClassNominal;
@@ -313,13 +320,18 @@ public class DataCache {
 
     int[][] newSortedIndices = new int[ numAttributes ][ ];
     instancesMissVal = new int[numInBag];
+    int idx = 0;
+    int maxLvl = 0; // maximum number of values for the categorical features
+
     boolean allCategorical = attInSortedIndices.length == 0;
     if (allCategorical) attInSortedIndices = new int[1];
-//    attInSortedIndices = new int[]{selectedAttributes[0]};
-    int idx = 0;
 
     for (int a : selectedAttributes) {
-      if (!(allCategorical && a == selectedAttributes[0]) && isAttrNominal(a)) continue;
+      // we will add, at most, only one categorical feature in sortedIndices
+      if (isAttrNominal(a)) {
+        maxLvl = Math.max(maxLvl, attNumVals[a]);
+        if (!(allCategorical && a == selectedAttributes[0])) continue;
+      }
 
       attInSortedIndices[idx] = a; ++idx;
       newSortedIndices[a] = new int[this.numInBag];
@@ -334,6 +346,7 @@ public class DataCache {
       }
     }
     this.sortedIndices = newSortedIndices;
+    this.levelsClasses = new double[maxLvl][numClasses];
   }
 
 

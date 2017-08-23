@@ -174,12 +174,12 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
         // create the in-bag dataset (and be sure to remember what's in bag)
         // for computing the out-of-bag error later
 //        long t = System.nanoTime();
+        // Trying to execute in parallel data.resample()
         DataCache bagData = myData.resample(bagSize, random, nAttrVirtual);
 //        Benchmark.updateTime(System.nanoTime() - t);
 
-        bagData.reusableRandomGenerator = bagData.getRandomNumberGenerator(
-          random.nextInt());
-        inBag[treeIdx] = bagData.inBag; // store later for OOB error calculation
+        bagData.reusableRandomGenerator = bagData.getRandomNumberGenerator(random.nextInt());
+//        inBag[treeIdx] = bagData.inBag; // store later for OOB error calculation
 
         // build the classifier
         if (m_Classifiers[treeIdx] instanceof FastRandomTree) {
@@ -200,7 +200,8 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       // make sure all trees have been trained before proceeding
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
         futures.get(treeIdx).get();
-
+        // Trying to execute in parallel data.resample()
+        inBag[treeIdx] = ((FastRandomTree) m_Classifiers[treeIdx]).myInBag;
       }
 
       // calc OOB error?
@@ -232,6 +233,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
         }
       }
 
+      // The new way to compute the feature importance
       if (false) {
         m_FastFeatImp = new double[data.numAttributes()];
         for (int j = 0; j < data.numAttributes(); ++j) {
