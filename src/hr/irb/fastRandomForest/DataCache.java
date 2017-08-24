@@ -59,6 +59,9 @@ public class DataCache {
    */
   protected final int[] attNumVals;
 
+  /** The number of instances that will be selected for the inBag (an instance can be selected more than once */
+  protected int bagSize;
+
   /** Numeric index of the class attribute. */
   protected final int classIndex;
 
@@ -231,13 +234,14 @@ public class DataCache {
    * weight. When an instance is sampled multiple times, its weight in the new
    * DataCache increases to a multiple of the original weight.
    * 
-   * @param bagSize If this is equal to the DataCache.numInstances, makes a
    * a bootstrap sample (n of of in
    * @param random A random number generator.
    * @return a new DataCache - consult "DataCache(DataCache origData)"
    * constructor to see what's deep / shallow copied
    */
-  public DataCache resample(int bagSize, Random random, int nAttrVirtual) {
+  public DataCache resample(Random random) {
+    int nAttrVirtual = getNumAttVirtual();
+
     if (nAttrVirtual >= numAttributes) {
       throw new ValueException("nAttr must be less than numAttributes");
     }
@@ -245,6 +249,7 @@ public class DataCache {
     // makes a deep copy of each instance, but with a shallow copy of its attributes
     DataCache result = new DataCache(this);
 
+    result.reusableRandomGenerator = random;
     // Time ~ 160908 ns
     double[] newWeights = new double[ numInstances ]; // all 0.0 by default
     
@@ -274,6 +279,7 @@ public class DataCache {
       nAttInSortedIndices += isAttrNominal(a) ? 0 : 1;
     }
     result.attInSortedIndices = new int[nAttInSortedIndices];
+    result.whatGoesWhere = new int[ result.inBag.length ];
 
     // Time random access to the weights of all the instances:
     //    - For newWeights[] ~ 18540 ns
@@ -380,6 +386,13 @@ public class DataCache {
             .hashCode();
     r.setSeed( dataSignature + seed );
     return r;
-    
+  }
+
+  public int getNumAttVirtual() {
+    int nAttrVirtual = (int) Math.sqrt(numAttributes*2) + 60;
+    if (nAttrVirtual >= numAttributes) {
+      nAttrVirtual = numAttributes - 1;
+    }
+    return nAttrVirtual;
   }
 }

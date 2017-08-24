@@ -60,6 +60,8 @@ class FastRandomTree
 
   public boolean[] myInBag;
 
+  public int m_seed;
+
   public HashSet<Integer> setSelectedAttr;
   
   /** The subtrees appended to this tree (node). */
@@ -108,6 +110,52 @@ class FastRandomTree
   protected static final int m_MinNum = 1;
 
   /**
+   * This constructor should not be used. Instead, use the next two constructors
+   */
+  public FastRandomTree() {
+  }
+
+  /**
+   * Constructor for the first node of the tree
+   * @param motherForest
+   * @param data
+   */
+  public FastRandomTree(FastRandomForest motherForest, DataCache data, int seed) {
+    int numClasses = data.numClasses;
+    this.m_seed = seed;
+    this.data = data;
+    // all parameters for training will be looked up in the motherForest (maxDepth, k_Value)
+    this.m_MotherForest = motherForest;
+    // 0.99: reference to these arrays will get passed down all nodes so the array can be re-used 
+    // 0.99: this array is of size two as now all splits are binary - even categorical ones
+    this.tempProps = new double[2];
+    this.tempDists = new double[2][];
+    this.tempDists[0] = new double[numClasses];
+    this.tempDists[1] = new double[numClasses];
+    this.tempDistsOther = new double[2][];
+    this.tempDistsOther[0] = new double[numClasses];
+    this.tempDistsOther[1] = new double[numClasses];
+  }
+
+  /**
+   * Constructor for all the nodes except the root
+   * @param motherForest
+   * @param data
+   * @param tempDists
+   * @param tempDistsOther
+   * @param tempProps
+   */
+  public FastRandomTree(FastRandomForest motherForest, DataCache data, double[][] tempDists,
+                        double[][] tempDistsOther, double[] tempProps) {
+    this.m_MotherForest = motherForest;
+    this.data = data;
+    // new in 0.99 - used in distributionSequentialAtt()
+    this.tempDists = tempDists;
+    this.tempDistsOther = tempDistsOther;
+    this.tempProps = tempProps;
+  }
+
+  /**
    * Get the value of MinNum.
    *
    * @return Value of MinNum.
@@ -130,7 +178,6 @@ class FastRandomTree
 
   /**
    * Get the value of K.
-   *
    * @return Value of K.
    */
   public final int getKValue() {
@@ -140,7 +187,6 @@ class FastRandomTree
 
   /**
    * Get the maximum depth of the tree, 0 for unlimited.
-   *
    * @return 		the maximum depth.
    */
   public final int getMaxDepth() {
@@ -150,7 +196,6 @@ class FastRandomTree
 
   /**
    * Returns default capabilities of the classifier.
-   *
    * @return      the capabilities of this classifier
    */
   @Override
@@ -198,8 +243,9 @@ class FastRandomTree
    * function.
    */
   public void run() {
-//    System.out.println(Thread.currentThread().getId());
-    // Trying to include data.resample() in the tree, so it will be executed in parallel
+    // makes a copy of data and selects randomly which are the inBag instances and the subset of features
+    data = data.resample(data.getRandomNumberGenerator(m_seed));
+    // we need to save the inBag[] array in order to have access to it after this.data is destroyed
     myInBag = data.inBag;
 
     // compute initial class counts
@@ -211,24 +257,18 @@ class FastRandomTree
     setSelectedAttr = new HashSet<>(data.selectedAttributes.length);
     for (int attr : data.selectedAttributes) setSelectedAttr.add(attr);
 
-    // prepare the DataCache by:
-    // ... creating an array for the whatGoesWhere field of the data
-    // ... creating the sortedIndices
-    data.whatGoesWhere = new int[ data.inBag.length ];
     // create the attribute indices window - skip class
     int[] attIndicesWindow = data.selectedAttributes;
-//    m_MotherForest.m_KValue = (int) Utils.log2(data.numAttributes)*2 + 1;
 
     // Start with FRF
     if (keepFastRandomTree(data.numInBag)) {
       // We don't need to create the sortedIndices if we won't use it
-//      long t = System.nanoTime();
       data.createInBagSortedIndicesNew();
-//      Benchmark.updateTime(System.nanoTime() - t);
 
       buildTree(data.sortedIndices, 0, data.numInBag - 1,
               classProbs, m_Debug, attIndicesWindow, 0);
     }
+
     // Start with MyRandomTree
     else {
       MyRandomTree auxTree = new MyRandomTree();
@@ -248,7 +288,6 @@ class FastRandomTree
     this.data = null;
 //    int nNodes = countNodes();
 //    Benchmark.updateNumNodes(nNodes);
-      
   }
 
   
@@ -360,7 +399,7 @@ class FastRandomTree
           //        .distributionForInstance(instance);
 
           // 0.99: new - binary splits (also) for nominal attributes
-          if ( data.instances.get(instIdx).value(m_Attribute) == m_SplitPoint ) {
+          if ( data.vals[m_Attribute][instIdx] == m_SplitPoint ) {
             returnedDist = m_Successors[0] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx) :
                     ((MyRandomTree) m_Successors[0]).distributionForInstance(data.instances.get(instIdx));
@@ -373,7 +412,7 @@ class FastRandomTree
 
         } else { // ------------------------------------------ numeric attributes
 
-          if ( data.instances.get(instIdx).value(m_Attribute) < m_SplitPoint) {
+          if ( data.vals[m_Attribute][instIdx] < m_SplitPoint) {
             returnedDist = m_Successors[0] instanceof FastRandomTree ?
                     ((FastRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx) :
                     ((MyRandomTree) m_Successors[0]).distributionForInstance(data.instances.get(instIdx));
@@ -393,9 +432,7 @@ class FastRandomTree
       }
 
     } else { // =============================================== node is a leaf
-
       return m_ClassProbs;
-
     }
   }
   
@@ -584,13 +621,13 @@ class FastRandomTree
 
         // continue with the FastRandomTree if --> (K * log(nInst)) / (K + nFeat) > some constant value
         if (keepFastRandomTree(nInstSucc)) {
-          FastRandomTree auxTree = new FastRandomTree();
-          auxTree.m_MotherForest = this.m_MotherForest;
-          auxTree.data = this.data;
-          // new in 0.99 - used in distributionSequentialAtt()
-          auxTree.tempDists = this.tempDists;
-          auxTree.tempDistsOther = this.tempDistsOther;
-          auxTree.tempProps = this.tempProps;
+          FastRandomTree auxTree = new FastRandomTree(m_MotherForest, data, tempDists, tempDistsOther, tempProps);
+//          auxTree.m_MotherForest = this.m_MotherForest;
+//          auxTree.data = this.data;
+//          // new in 0.99 - used in distributionSequentialAtt()
+//          auxTree.tempDists = this.tempDists;
+//          auxTree.tempDistsOther = this.tempDistsOther;
+//          auxTree.tempProps = this.tempProps;
 
           // check if we're about to make an empty branch - this can happen with
           // nominal attributes with more than two categories (as of ver. 0.98)
@@ -864,6 +901,8 @@ class FastRandomTree
           }
         }
         if (idxMissVal == sortedIndicesOfAttLength) return Double.NaN; // all values missing
+        // entropy..Rows(levelsClasses, numLvls)
+        // com decideixo el splitPoint? Hauria de ser un array. O podria ser a numLvls/2.
 
         // copy the values of currDist[1] to dist[1]
         System.arraycopy(currDist[1], 0, dist[1], 0, currDist[1].length);

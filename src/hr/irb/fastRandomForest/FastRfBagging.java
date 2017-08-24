@@ -106,42 +106,25 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       throw new IllegalArgumentException("The FastRfBagging class accepts " +
         "only FastRandomTree as its base classifier.");
 
-    /* We fill the m_Classifiers array by creating lots of trees with new()
-     * because this is much faster than using serialization to deep-copy the
-     * one tree in m_Classifier - this is what the super.buildClassifier(data)
-     * normally does. */
-    m_Classifiers = new Classifier[m_NumIterations];
-    for (int i = 0; i < m_Classifiers.length; i++) {
-      FastRandomTree curTree = new FastRandomTree();
-      // all parameters for training will be looked up in the motherForest (maxDepth, k_Value)
-      curTree.m_MotherForest = motherForest;
-      // 0.99: reference to these arrays will get passed down all nodes so the array can be re-used 
-      // 0.99: this array is of size two as now all splits are binary - even categorical ones
-      curTree.tempProps = new double[2]; 
-      curTree.tempDists = new double[2][]; 
-      curTree.tempDists[0] = new double[data.numClasses()];
-      curTree.tempDists[1] = new double[data.numClasses()];
-      curTree.tempDistsOther = new double[2][]; 
-      curTree.tempDistsOther[0] = new double[data.numClasses()];
-      curTree.tempDistsOther[1] = new double[data.numClasses()];
-      m_Classifiers[i] = curTree;
+    if (m_CalcOutOfBag && (m_BagSizePercent != 100)) {
+      throw new IllegalArgumentException("Bag size needs to be 100% if " +
+              "out-of-bag error is to be calculated!");
     }
 
     // this was SLOW.. takes approx 1/2 time as training the forest afterwards (!!!)
     // super.buildClassifier(data);
 
-    if (m_CalcOutOfBag && (m_BagSizePercent != 100)) {
-      throw new IllegalArgumentException("Bag size needs to be 100% if " +
-        "out-of-bag error is to be calculated!");
-    }
-
+        /* We fill the m_Classifiers array by creating lots of trees with new()
+     * because this is much faster than using serialization to deep-copy the
+     * one tree in m_Classifier - this is what the super.buildClassifier(data)
+     * normally does. */
+    m_Classifiers = new Classifier[m_NumIterations];
 
     // sorting is performed inside this constructor
     DataCache myData = new DataCache(data);
-
     int bagSize = data.numInstances() * m_BagSizePercent / 100;
+    myData.bagSize = bagSize; // no m'acaba d'agradar aquesta assignacio
     Random random = new Random(m_Seed);
-
     boolean[][] inBag = new boolean[m_Classifiers.length][];
 
     // thread management
@@ -155,7 +138,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
 //      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)*2 + 1;
 //      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes)*(1 + 8*Math.exp(-myData.numAttributes/370.0)));
 //      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes) + 65;
-      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes*2) + 60;
+//      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes*2) + 60;
 //      nAttrVirtual = 80;
 //      nAttrVirtual = myData.numAttributes - 1;
 //      int nAttrVirtual = myData.numAttributes - 1;
@@ -164,43 +147,23 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 5;
 //      motherForest.m_KValue = 7;
 //      motherForest.m_KValue = (int) Math.sqrt(myData.numAttributes);
-      if (nAttrVirtual >= myData.numAttributes) {
-        nAttrVirtual = myData.numAttributes - 1;
+      // TODO Where I should modify m_KValue?
+      if ((int) Math.sqrt(myData.numAttributes*2) + 60 >= myData.numAttributes) {
         motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 1;
       }
 
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
 
-        // create the in-bag dataset (and be sure to remember what's in bag)
-        // for computing the out-of-bag error later
-//        long t = System.nanoTime();
-        // Trying to execute in parallel data.resample()
-        DataCache bagData = myData.resample(bagSize, random, nAttrVirtual);
-//        Benchmark.updateTime(System.nanoTime() - t);
+        FastRandomTree curTree = new FastRandomTree(motherForest, myData, random.nextInt());
+        m_Classifiers[treeIdx] = curTree;
 
-        bagData.reusableRandomGenerator = bagData.getRandomNumberGenerator(random.nextInt());
-//        inBag[treeIdx] = bagData.inBag; // store later for OOB error calculation
-
-        // build the classifier
-        if (m_Classifiers[treeIdx] instanceof FastRandomTree) {
-
-          FastRandomTree aTree = (FastRandomTree) m_Classifiers[treeIdx];
-          aTree.data = bagData;
-
-          Future<?> future = threadPool.submit(aTree);
-          futures.add(future);
-
-        } else {
-          throw new IllegalArgumentException("The FastRfBagging class accepts " +
-            "only FastRandomTree as its base classifier.");
-        }
-
+        Future<?> future = threadPool.submit(curTree);
+        futures.add(future);
       }
 
       // make sure all trees have been trained before proceeding
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
         futures.get(treeIdx).get();
-        // Trying to execute in parallel data.resample()
         inBag[treeIdx] = ((FastRandomTree) m_Classifiers[treeIdx]).myInBag;
       }
 
