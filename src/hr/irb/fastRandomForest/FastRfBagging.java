@@ -23,7 +23,6 @@
 
 package hr.irb.fastRandomForest;
 
-import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.RandomizableIteratedSingleClassifierEnhancer;
 import weka.core.*;
@@ -144,13 +143,13 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
 //      int nAttrVirtual = myData.numAttributes - 1;
 //      int nAttrVirtual = (int) Math.sqrt(myData.numAttributes)/2;
 //      motherForest.m_KValue = (int) Utils.log2(myData.numAttributes + 1024) + 7;
-      motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 5;
+//      motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 5;
 //      motherForest.m_KValue = 7;
 //      motherForest.m_KValue = (int) Math.sqrt(myData.numAttributes);
-      // TODO Where I should modify m_KValue?
-      if ((int) Math.sqrt(myData.numAttributes*2) + 60 >= myData.numAttributes) {
-        motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 1;
-      }
+//      // TODO Where I should modify m_KValue?
+//      if ((int) Math.sqrt(myData.numAttributes*2) + 60 >= myData.numAttributes) {
+//        motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 1;
+//      }
 
       for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++) {
 
@@ -177,55 +176,54 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
 
       //calc feature importances
       m_FeatureImportances = null;
-      //m_FeatureNames = null;
       if (getComputeImportances()) {
         m_FeatureImportances = new double[data.numAttributes()];
-        ///m_FeatureNames = new String[data.numAttributes()];
-        //Instances dataCopy = new Instances(data); //To scramble
-        //int[] permutation = FastRfUtils.randomPermutation(data.numInstances(), random);
         for (int j = 0; j < data.numAttributes(); j++) {
           if (j != data.classIndex()) {
-            //double sError = computeOOBError(FastRfUtils.scramble(data, dataCopy, j, permutation), inBag, threadPool);
-            //double sError = computeOOBError(data, inBag, threadPool, j, 0);
             float[] unscrambled = myData.scrambleOneAttribute(j, random);
             double sError = computeOOBError(myData, inBag, threadPool, m_Classifiers);
             myData.vals[j] = unscrambled; // restore the original state
             m_FeatureImportances[j] = sError - m_OutOfBagError;
           }
-          //m_FeatureNames[j] = data.attribute(j).name();
         }
       }
 
       // The new way to compute the feature importance
-      if (false) {
-        m_FastFeatImp = new double[data.numAttributes()];
+      if (getComputeImportancesNew()) {
+        m_FeatureImportancesNew = new double[data.numAttributes()];
+        // TODO This loop could be executed in parallel
         for (int j = 0; j < data.numAttributes(); ++j) {
           if (myData.classIndex == j) {
-            continue;
+            continue; // it doesn't make sense to calculate feature importance for the class attribute
           }
-          ArrayList<Integer> indicesWithAttribute = new ArrayList<>();
-          ArrayList<Integer> indicesWithoutAttribute = new ArrayList<>();
+          // Compute the indices of the trees that contain or not the attribute "j"
+          ArrayList<Integer> indicesTreesWithAttr = new ArrayList<>();
+          ArrayList<Integer> indicesTreesWithoutAttr = new ArrayList<>();
           for (int k = 0; k < m_Classifiers.length; ++k) {
             FastRandomTree frt = (FastRandomTree) m_Classifiers[k];
-            if (frt.setSelectedAttr.contains(j)) indicesWithAttribute.add(k);
-            else indicesWithoutAttribute.add(k);
+            if (frt.subsetSelectedAttr.contains(j)) indicesTreesWithAttr.add(k);
+            else indicesTreesWithoutAttr.add(k);
           }
-          boolean[][] inBagWithAttr = new boolean[indicesWithAttribute.size()][];
-          Classifier[] clssWithAttr = new Classifier[indicesWithAttribute.size()];
-          for (int k = 0; k < indicesWithAttribute.size(); ++k) {
-            inBagWithAttr[k] = inBag[indicesWithAttribute.get(k)];
-            clssWithAttr[k] = m_Classifiers[indicesWithAttribute.get(k)];
+          // Take the FastRandomTrees and its inBag array that have the attribute "j"
+          boolean[][] inBagWithAttr = new boolean[indicesTreesWithAttr.size()][];
+          Classifier[] classifiersWithAttr = new Classifier[indicesTreesWithAttr.size()];
+          for (int k = 0; k < indicesTreesWithAttr.size(); ++k) {
+            inBagWithAttr[k] = inBag[indicesTreesWithAttr.get(k)];
+            classifiersWithAttr[k] = m_Classifiers[indicesTreesWithAttr.get(k)];
           }
-          boolean[][] inBagWithoutAttr = new boolean[indicesWithoutAttribute.size()][];
-          Classifier[] clssWithoutAttr = new Classifier[indicesWithoutAttribute.size()];
-          for (int k = 0; k < indicesWithoutAttribute.size(); ++k) {
-            inBagWithoutAttr[k] = inBag[indicesWithoutAttribute.get(k)];
-            clssWithoutAttr[k] = m_Classifiers[indicesWithoutAttribute.get(k)];
+          // Take the FastRandomTrees and its inBag array that don't have the attribute "j"
+          boolean[][] inBagWithoutAttr = new boolean[indicesTreesWithoutAttr.size()][];
+          Classifier[] classifiersWithoutAttr = new Classifier[indicesTreesWithoutAttr.size()];
+          for (int k = 0; k < indicesTreesWithoutAttr.size(); ++k) {
+            inBagWithoutAttr[k] = inBag[indicesTreesWithoutAttr.get(k)];
+            classifiersWithoutAttr[k] = m_Classifiers[indicesTreesWithoutAttr.get(k)];
           }
-          double errorWithAttr = computeOOBError(myData, inBagWithAttr, threadPool, clssWithAttr);
-          double errorWithoutAttr = computeOOBError(myData, inBagWithoutAttr, threadPool, clssWithoutAttr);
+          // Compute the OOBError for the trees that have the attribute "j"
+          double errorWithAttr = computeOOBError(myData, inBagWithAttr, threadPool, classifiersWithAttr);
+          // Compute the OOBError for the trees that don't have the attribute "j"
+          double errorWithoutAttr = computeOOBError(myData, inBagWithoutAttr, threadPool, classifiersWithoutAttr);
           double diff = errorWithoutAttr - errorWithAttr;
-          m_FastFeatImp[j] = diff;
+          m_FeatureImportancesNew[j] = diff;
         }
       }
 
@@ -338,9 +336,10 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   /**
    * Whether compute the importances or not.
    */
-  private boolean m_computeImportances = true;
+  private boolean m_computeImportances = false;
 
-  private double[] m_FastFeatImp;
+  private double[] m_FeatureImportancesNew;
+  private boolean m_computeImportancesNew = false;
 
   /**
    * @return compute feature importances?
@@ -361,6 +360,27 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    */
   public double[] getFeatureImportances() {
     return m_FeatureImportances;
+  }
+
+  /**
+   * @return compute feature importances new?
+   */
+  public boolean getComputeImportancesNew() {
+    return m_computeImportancesNew;
+  }
+
+  /**
+   * @param computeImportances compute feature importances new?
+   */
+  public void setComputeImportancesNew(boolean computeImportances) {
+    m_computeImportancesNew = computeImportances;
+  }
+
+  /**
+   * @return unnormalized feature importances new
+   */
+  public double[] getFeatureImportancesNew() {
+    return m_FeatureImportancesNew;
   }
   
   /** Used when displaying feature importances. */

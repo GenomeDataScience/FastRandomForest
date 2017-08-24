@@ -239,9 +239,7 @@ public class DataCache {
    * @return a new DataCache - consult "DataCache(DataCache origData)"
    * constructor to see what's deep / shallow copied
    */
-  public DataCache resample(Random random) {
-    int nAttrVirtual = getNumAttVirtual();
-
+  public DataCache resample(Random random, int nAttrVirtual) {
     if (nAttrVirtual >= numAttributes) {
       throw new ValueException("nAttr must be less than numAttributes");
     }
@@ -386,13 +384,5 @@ public class DataCache {
             .hashCode();
     r.setSeed( dataSignature + seed );
     return r;
-  }
-
-  public int getNumAttVirtual() {
-    int nAttrVirtual = (int) Math.sqrt(numAttributes*2) + 60;
-    if (nAttrVirtual >= numAttributes) {
-      nAttrVirtual = numAttributes - 1;
-    }
-    return nAttrVirtual;
   }
 }

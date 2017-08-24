@@ -107,7 +107,9 @@ public class FastRandomForest
    * Number of features to consider in random feature selection.
    * If less than 1 will use int(logM+1) )
    */
-  protected int m_numFeatures = 0;
+  protected int m_numFeatNode = 0;
+
+  protected int m_numFeatTree = 0;
 
   /** The random seed. */
   protected int m_randomSeed = 1;
@@ -213,7 +215,7 @@ public class FastRandomForest
    */
   public int getNumFeatures(){
 
-    return m_numFeatures;
+    return m_numFeatNode;
   }
 
   /**
@@ -223,7 +225,7 @@ public class FastRandomForest
    */
   public void setNumFeatures(int newNumFeatures){
 
-    m_numFeatures = newNumFeatures;
+    m_numFeatNode = newNumFeatures;
   }
 
   /**
@@ -328,6 +330,16 @@ public class FastRandomForest
   private boolean m_computeImportances = false;
 
   /**
+   * Whether to compute the importances or not using the new method.
+   */
+  private boolean m_computeImportancesNew = false;
+
+  /**
+   * Whether to compute the interactions or not.
+   */
+  private boolean m_computeInteractions = false;
+
+  /**
    * @return compute feature importances?
    */
   public boolean getComputeImportances() {
@@ -339,6 +351,34 @@ public class FastRandomForest
    */
   public void setComputeImportances(boolean computeImportances) {
     m_computeImportances = computeImportances;
+  }
+
+  /**
+   * @return compute feature importances new?
+   */
+  public boolean getComputeImportancesNew() {
+    return m_computeImportancesNew;
+  }
+
+  /**
+   * @param computeImportances compute feature importances?
+   */
+  public void setComputeImportancesNew(boolean computeImportances) {
+    m_computeImportancesNew = computeImportances;
+  }
+
+  /**
+   * @return compute feature importances new?
+   */
+  public boolean getComputeInteractions() {
+    return m_computeInteractions;
+  }
+
+  /**
+   * @param computeInteractions compute feature importances?
+   */
+  public void setComputeInteractions(boolean computeInteractions) {
+    m_computeInteractions = computeInteractions;
   }
 
   
@@ -485,7 +525,7 @@ public class FastRandomForest
    *  Number of trees to build.</pre>
    * <p/>
    * <pre> -K &lt;number of features&gt;
-   *  Number of features to consider (&lt;1=int(logM+1)).</pre>
+   *  Number of features to consider in a node(&lt;1=int(logM+1)).</pre>
    * <p/>
    * <pre> -S
    *  Seed for random number generator.
@@ -499,8 +539,17 @@ public class FastRandomForest
    *  Number of simultaneous threads to use.
    *  (default 0 = autodetect number of available cores)</pre>
    * <p/>
+   * <pre> -numFeatTree
+   *  Number of features selected for each tree.</pre>
+   * <p/>
    * <pre> -import
    *  Compute and output RF feature importances (slow).</pre>
+   * <p/>
+   * <pre> -importNew
+   *  Compute and output RF feature importances using the new version (fast).</pre>
+   * <p/>
+   * <pre> -interactions
+   *  Compute and output RF interactions.</pre>
    * <p/>
    * <pre> -D
    *  If set, classifier is run in debug mode and
@@ -524,9 +573,9 @@ public class FastRandomForest
 
     tmpStr = Utils.getOption('K', options);
     if ( tmpStr.length() != 0 ) {
-      m_numFeatures = Integer.parseInt(tmpStr);
+      m_numFeatNode = Integer.parseInt(tmpStr);
     } else {
-      m_numFeatures = 0;
+      m_numFeatNode = 0;
     }
 
     tmpStr = Utils.getOption('S', options);
@@ -551,7 +600,16 @@ public class FastRandomForest
       setNumThreads(0);
     }
 
+    tmpStr = Utils.getOption("numFeatTree", options);
+    if ( tmpStr.length() != 0 ){
+      m_numFeatTree = Integer.parseInt(tmpStr);
+    } else {
+      m_numFeatTree = 0;
+    }
+
     setComputeImportances(Utils.getFlag("import", options));
+    setComputeImportancesNew(Utils.getFlag("importNew", options));
+    setComputeInteractions(Utils.getFlag("interactions", options));
 
     super.setOptions(options);
 
@@ -605,9 +663,25 @@ public class FastRandomForest
     m_bagger = new FastRfBagging();
 
     // Set up the tree options which are held in the motherForest.
-    m_KValue = m_numFeatures;
+    m_KValue = m_numFeatNode;
     if(m_KValue > data.numAttributes() - 1) m_KValue = data.numAttributes() - 1;
-    if(m_KValue < 1) m_KValue = (int)Utils.log2(data.numAttributes()) + 1;
+    if(m_KValue < 1) m_KValue = (int)Utils.log2(data.numAttributes()) + 5;
+
+    if(m_numFeatTree < 1) m_numFeatTree = (int) Math.sqrt(data.numAttributes()*2) + 60;
+    if(m_numFeatTree >= data.numAttributes()) {
+      m_numFeatTree = data.numAttributes() - 1;
+      m_KValue = (int)Utils.log2(data.numAttributes()) + 1;
+    }
+    // Modify m_numFeatTree if we compute feature importance new
+    if (this.getComputeImportancesNew()) {
+      int minTrees = 20;
+      // a minimum of 40 trees
+      m_numTrees = Math.max(minTrees*2, m_numTrees);
+      // a minimum of 20 trees with a specific attribute
+      m_numFeatTree = Math.max(minTrees*data.numAttributes()/m_numTrees + 1, m_numFeatTree);
+      // a minimum of 20 trees without a specific attribute
+      m_numFeatTree = Math.min((m_numTrees - minTrees)*data.numAttributes()/m_numTrees, m_numFeatTree);
+    }
 
     FastRandomTree rTree = new FastRandomTree();
     rTree.m_MotherForest = this; // allows to retrieve KValue and MaxDepth
@@ -620,6 +694,7 @@ public class FastRandomForest
     m_bagger.setNumIterations(m_numTrees);
     m_bagger.setCalcOutOfBag(true);
     m_bagger.setComputeImportances( this.getComputeImportances() );
+    m_bagger.setComputeImportancesNew(this.getComputeImportancesNew());
 
     m_bagger.buildClassifier(data, m_NumThreads, this);
     
@@ -696,6 +771,14 @@ public class FastRandomForest
   /** @return the feature importances or <code>null</code> if the importances haven't been computed */
   public double[] getFeatureImportances(){
     return m_bagger.getFeatureImportances();
+  }
+
+  public double[] getFeatureImportancesNew() {
+    return m_bagger.getFeatureImportancesNew();
+  }
+
+  public double[][] getInteractions() {
+    return null;
   }
 
   ////////////////////////////

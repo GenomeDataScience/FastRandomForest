@@ -27,7 +27,6 @@ import weka.classifiers.AbstractClassifier;
 import weka.core.*;
 import weka.core.Capabilities.Capability;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
@@ -62,7 +61,7 @@ class FastRandomTree
 
   public int m_seed;
 
-  public HashSet<Integer> setSelectedAttr;
+  public HashSet<Integer> subsetSelectedAttr;
   
   /** The subtrees appended to this tree (node). */
   protected AbstractClassifier[] m_Successors;
@@ -244,7 +243,7 @@ class FastRandomTree
    */
   public void run() {
     // makes a copy of data and selects randomly which are the inBag instances and the subset of features
-    data = data.resample(data.getRandomNumberGenerator(m_seed));
+    data = data.resample(data.getRandomNumberGenerator(m_seed), m_MotherForest.m_numFeatTree);
     // we need to save the inBag[] array in order to have access to it after this.data is destroyed
     myInBag = data.inBag;
 
@@ -254,8 +253,8 @@ class FastRandomTree
       classProbs[data.instClassValues[i]] += data.instWeights[i];
     }
 
-    setSelectedAttr = new HashSet<>(data.selectedAttributes.length);
-    for (int attr : data.selectedAttributes) setSelectedAttr.add(attr);
+    subsetSelectedAttr = new HashSet<>(data.selectedAttributes.length);
+    for (int attr : data.selectedAttributes) subsetSelectedAttr.add(attr);
 
     // create the attribute indices window - skip class
     int[] attIndicesWindow = data.selectedAttributes;
@@ -622,12 +621,6 @@ class FastRandomTree
         // continue with the FastRandomTree if --> (K * log(nInst)) / (K + nFeat) > some constant value
         if (keepFastRandomTree(nInstSucc)) {
           FastRandomTree auxTree = new FastRandomTree(m_MotherForest, data, tempDists, tempDistsOther, tempProps);
-//          auxTree.m_MotherForest = this.m_MotherForest;
-//          auxTree.data = this.data;
-//          // new in 0.99 - used in distributionSequentialAtt()
-//          auxTree.tempDists = this.tempDists;
-//          auxTree.tempDistsOther = this.tempDistsOther;
-//          auxTree.tempProps = this.tempProps;
 
           // check if we're about to make an empty branch - this can happen with
           // nominal attributes with more than two categories (as of ver. 0.98)
@@ -647,7 +640,6 @@ class FastRandomTree
             auxTree.buildTree(sortedIndices, belowTheSplitStartsAt, endAt,
                     dist[i], m_Debug, attIndicesWindow, depth + 1);
           }
-
 
           dist[i] = null;
           m_Successors[i] = auxTree;
@@ -852,6 +844,7 @@ class FastRandomTree
     // a contingency table of the split point vs class.
     double[][] dist = this.tempDists;
     double[][] currDist = this.tempDistsOther;
+    // Copy the current class distribution
     for (int i = 0; i < classProbs.length; ++i) {
       currDist[1][i] = classProbs[i];
     }
