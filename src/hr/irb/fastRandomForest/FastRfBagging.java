@@ -126,8 +126,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     // thread management
     ExecutorService threadPool = Executors.newFixedThreadPool(
       numThreads > 0 ? numThreads : Runtime.getRuntime().availableProcessors());
-    List<Future<?>> futures =
-      new ArrayList<Future<?>>(m_Classifiers.length);
+    List<Future<?>> futures = new ArrayList<Future<?>>(m_Classifiers.length);
 
     try {
 //      int nAttrVirtual = (int) (Math.sqrt(myData.numAttributes) * Utils.log2(myData.numAttributes));
@@ -143,7 +142,6 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
 //      motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 5;
 //      motherForest.m_KValue = 7;
 //      motherForest.m_KValue = (int) Math.sqrt(myData.numAttributes);
-//      // TODO Where I should modify m_KValue?
 //      if ((int) Math.sqrt(myData.numAttributes*2) + 60 >= myData.numAttributes) {
 //        motherForest.m_KValue = (int) Utils.log2(myData.numAttributes) + 1;
 //      }
@@ -289,6 +287,30 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
         }
       }
 
+      if (m_computeInteractions) {
+        // initialize matrix
+        m_Interactions = new double[data.numAttributes() - 1][];
+        for (int i = 0; i < data.numAttributes() - 1; ++i) {
+          m_Interactions[i] = new double[data.numAttributes() - 1];
+        }
+        // compute interactions
+        // TODO Tenir clar el que es vol calcular i implementar-ho
+        for (int i = 0; i < data.numAttributes(); ++i) {
+          if (i == data.classIndex()) continue;
+          float[] unscrambled1 = myData.scrambleOneAttribute(i, random);
+          for (int j = 0; j < data.numAttributes(); ++j) {
+            if (j == i) continue;
+            float[] unscrambled2 = myData.scrambleOneAttribute(j, random);
+            double sError = computeOOBError(myData, inBag, threadPool, m_Classifiers);
+            myData.vals[i] = unscrambled2; // restore to the scrambled matrix with the "i" feature
+//            m_FeatureImportances[i] = sError - m_OutOfBagError;
+          }
+          myData.vals[i] = unscrambled1; // restore the original state
+        }
+      }
+
+      // TODO Implementar tambe importance and interactions basats en maximal subtrees
+
       threadPool.shutdown();
 
     }
@@ -431,6 +453,12 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
 
   private double[] m_FeatureImportancesNew;
   private boolean m_computeImportancesNew = false;
+
+  private double[][] m_Interactions;
+  private boolean m_computeInteractions = false;
+
+  private double[][] m_InteractionsNew;
+  private boolean m_computeInteractionsNew = false;
 
   /**
    * @return compute feature importances?
