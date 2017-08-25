@@ -96,4 +96,45 @@ public class VotesCollectorDataCache implements Callable<Double>{
 
     return vote;
   }
+
+  /** The same as call */
+  public static Double execute(Classifier[] m_Classifiers, int instanceIdx, DataCache data, boolean[][] inBag) {
+
+    double[] classProbs = null;
+
+    classProbs = new double[data.numClasses];
+
+    int numVotes = 0;
+
+    for (int treeIdx = 0; treeIdx < m_Classifiers.length; treeIdx++){
+
+      if ( inBag[treeIdx][instanceIdx] ) {
+        continue;
+      }
+
+      numVotes++;
+
+      FastRandomTree aTree;
+      if ( m_Classifiers[treeIdx] instanceof FastRandomTree)
+        aTree = (FastRandomTree) m_Classifiers[treeIdx];
+      else
+        throw new IllegalArgumentException("Only FastRandomTrees accepted in the VotesCollector.");
+
+      double[] curDist;
+      curDist = aTree.distributionForInstanceInDataCache(data, instanceIdx);
+
+      for(int classIdx = 0; classIdx < curDist.length; classIdx++) {
+        classProbs[classIdx] += curDist[classIdx];
+      }
+
+    }
+
+    double vote;
+    //if(regression)
+    //  vote = regrValue / numVotes;         // average - for regression
+    //else
+    vote = Utils.maxIndex(classProbs);   // consensus - for classification
+
+    return vote;
+  }
 }

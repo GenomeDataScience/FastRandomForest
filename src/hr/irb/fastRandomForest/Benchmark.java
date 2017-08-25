@@ -93,7 +93,7 @@ public class Benchmark {
       
       classifiers[i+1] = new hr.irb.fastRandomForest.FastRandomForest();
       classifiers[i+1].setOptions(new String[]{"-I", args[1], // "-import",
-        "-threads", Integer.toString(threadNums.get(i))}); // , "-importNew"
+        "-threads", Integer.toString(threadNums.get(i)), "-importNew"}); // , "-importNew"
       
     }
 
@@ -181,9 +181,9 @@ public class Benchmark {
           accyScore[curCfr][curRun-1] = eval.pctCorrect();
           timeScore[curCfr][curRun-1] = elapsedTime;
 
-          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%.2f\t",
+          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%6d\t",
                   curCfr, curRun, aucSum / sumClassProps,
-                  eval.pctCorrect(), elapsedTime, 0.0)); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)    Utils.log2(numNodes/(500.0 * numFolds))
+                  eval.pctCorrect(), elapsedTime, myTime)); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)    Utils.log2(numNodes/(500.0 * numFolds))
           numNodes = 0;
           myTime = 0;
 
@@ -240,7 +240,7 @@ public class Benchmark {
       PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt48.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt59.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt61.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (IOException e) {

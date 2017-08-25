@@ -546,7 +546,7 @@ public class FastRandomForest
    *  Compute and output RF feature importances (slow).</pre>
    * <p/>
    * <pre> -importNew
-   *  Compute and output RF feature importances using the new version (fast).</pre>
+   *  Compute and output RF feature importances using the new version (slow).</pre>
    * <p/>
    * <pre> -interactions
    *  Compute and output RF interactions.</pre>

@@ -357,16 +357,51 @@ class FastRandomTree
   }
 
 
+//  /**
+//   * Computes class distribution of an instance using the FastRandomTree. <p>
+//   *
+//   * Works correctly only if the DataCache has the same attributes as the one
+//   * used to train the FastRandomTree - but this function does not check for
+//   * that! <p>
+//   *
+//   * Main use of this is to compute out-of-bag error (also when finding feature
+//   * importances).
+//   *
+//   * @param instIdx the index of the instance to compute the distribution for
+//   * @return the computed class distribution
+//   * @throws Exception if computation fails
+//   */
+//  public double[] distributionForInstanceInDataCache(DataCache data, int instIdx) {
+//    FastRandomTree frt = this;
+//    while (frt.m_Attribute > -1) {
+//      // 0.99: new - binary splits (also) for nominal attributes
+//      if (data.isAttrNominal(frt.m_Attribute)) {
+//        if ( data.vals[frt.m_Attribute][instIdx] == frt.m_SplitPoint ) {
+//          frt = (FastRandomTree) frt.m_Successors[0];
+//        } else {
+//          frt = (FastRandomTree) frt.m_Successors[1];
+//        }
+//      } else {
+//        if (data.vals[frt.m_Attribute][instIdx] < frt.m_SplitPoint) {
+//          frt = (FastRandomTree) frt.m_Successors[0];
+//        } else {
+//          frt = (FastRandomTree) frt.m_Successors[1];
+//        }
+//      }
+//    }
+//    return frt.m_ClassProbs;
+//  }
+
   /**
    * Computes class distribution of an instance using the FastRandomTree. <p>
    *
    * Works correctly only if the DataCache has the same attributes as the one
    * used to train the FastRandomTree - but this function does not check for
    * that! <p>
-   * 
+   *
    * Main use of this is to compute out-of-bag error (also when finding feature
    * importances).
-   * 
+   *
    * @param instIdx the index of the instance to compute the distribution for
    * @return the computed class distribution
    * @throws Exception if computation fails
@@ -421,6 +456,41 @@ class FastRandomTree
                     ((MyRandomTree) m_Successors[1]).distributionForInstance(data.instances.get(instIdx));
           }
         }
+//        if ( data.isValueMissing(m_Attribute, instIdx) ) {  // ---------------- missing value
+//
+//          returnedDist = new double[m_MotherForest.m_Info.numClasses()];
+//          // split instance up
+//          for (int i = 0; i < m_Successors.length; i++) {
+//            double[] help = ((FastRandomTree) m_Successors[i]).distributionForInstanceInDataCache(data, instIdx);
+//
+//            if (help != null) {
+//              for (int j = 0; j < help.length; j++) {
+//                returnedDist[j] += m_Prop[i] * help[j];
+//              }
+//            }
+//          }
+//
+//        } else if ( data.isAttrNominal(m_Attribute) ) { // ------ nominal
+//
+//          //returnedDist = m_Successors[(int) instance.value(m_Attribute)]
+//          //        .distributionForInstance(instance);
+//
+//          // 0.99: new - binary splits (also) for nominal attributes
+//          if ( data.vals[m_Attribute][instIdx] == m_SplitPoint ) {
+//            returnedDist = ((FastRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx);
+//          } else {
+//            returnedDist = ((FastRandomTree) m_Successors[1]).distributionForInstanceInDataCache(data, instIdx);
+//          }
+//
+//
+//        } else { // ------------------------------------------ numeric attributes
+//
+//          if ( data.vals[m_Attribute][instIdx] < m_SplitPoint) {
+//            returnedDist = ((FastRandomTree) m_Successors[0]).distributionForInstanceInDataCache(data, instIdx);
+//          } else {
+//            returnedDist = ((FastRandomTree) m_Successors[1]).distributionForInstanceInDataCache(data, instIdx);
+//          }
+//        }
 
         return returnedDist;
 
