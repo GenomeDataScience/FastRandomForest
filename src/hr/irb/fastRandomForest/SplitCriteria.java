@@ -67,6 +67,21 @@ public class SplitCriteria {
          
   }
 
+  public static double giniConditionedOnRows(double[][] matrix) {
+
+    double returnValue = 0, sumForBranch;
+
+    for (int branchNum = 0; branchNum < matrix.length; branchNum++) {
+      sumForBranch = 0;
+      for (int classNum = 0; classNum < matrix[0].length; classNum++) {
+        returnValue -= matrix[branchNum][classNum] * matrix[branchNum][classNum];
+        sumForBranch += matrix[branchNum][classNum];
+      }
+      returnValue += sumForBranch * sumForBranch;
+    }
+
+    return returnValue;
+  }
   
 
   /**
@@ -82,9 +97,9 @@ public class SplitCriteria {
    * @return the columns' entropy
    */
   public static double entropyOverColumns(double[][] matrix) {
-    
+
     //return ContingencyTables.entropyOverColumns(matrix);
-    
+
     double returnValue = 0, sumForColumn, total = 0;
 
     for (int j = 0; j < matrix[0].length; j++) {
@@ -97,8 +112,24 @@ public class SplitCriteria {
     }
 
     //return (returnValue + lnFunc(total)) / (total * log2);
-    return (returnValue + lnFunc(total)); 
-     
+    return (returnValue + lnFunc(total));
+
+  }
+
+  public static double giniOverColumns(double[][] matrix) {
+
+    double returnValue = 0, sumForColumn, total = 0;
+
+    for (int j = 0; j < matrix[0].length; j++) {
+      sumForColumn = 0;
+      for (int i = 0; i < matrix.length; i++) {
+        sumForColumn += matrix[i][j];
+      }
+      returnValue -= sumForColumn * sumForColumn;
+      total += sumForColumn;
+    }
+
+    return returnValue + total*total;
   }
 
   
