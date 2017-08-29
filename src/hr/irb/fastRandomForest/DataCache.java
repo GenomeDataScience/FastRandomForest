@@ -38,7 +38,6 @@ import java.util.Random;
  * @author Fran Supek (fran.supek[AT]irb.hr)
  */
 public class DataCache {
-  protected FastInstances instances;
 
   /** Array with the indices of the selected attributes of the instances */
   protected int[] selectedAttributes;
@@ -127,8 +126,7 @@ public class DataCache {
     numAttributes = origData.numAttributes();
     numClasses = origData.numClasses();
     numInstances = origData.numInstances();
-    // new
-    instances = new FastInstances(origData);
+
     isClassNominal = origData.classAttribute().isNominal();
 
     attNumVals = new int[origData.numAttributes()];
@@ -173,8 +171,7 @@ public class DataCache {
         // Handling nominal attributes: as of FastRF 0.99, they're sorted as well
         // missing values are coded as Float.MAX_VALUE and go to the end
 
-        sortedIndices[a] = FastRfUtils.sort(vals[a]); 
-
+        sortedIndices[a] = FastRfUtils.sort(vals[a]);
 
       } else { // ----------------------------------------------------- numeric
 
@@ -183,11 +180,7 @@ public class DataCache {
         sortedIndices[a] = FastRfUtils.sort(vals[a]); 
 
       } // ---------------------------------------------------------- attr kind
-
     } // ========================================================= attr by attr
-
-    // System.out.println(" Done.");
-
   }
 
   
@@ -213,7 +206,6 @@ public class DataCache {
 
     instWeights = origData.instWeights;     // shallow copied
 
-//    instances = origData.instances.copy();
     inBag = new boolean[numInstances];      // gets its own inBag array
 
     numInBag = 0;
@@ -221,7 +213,6 @@ public class DataCache {
     whatGoesWhere = null;     // this will be created when tree building starts
 
     isClassNominal = origData.isClassNominal;
-
   }
 
   
@@ -255,7 +246,6 @@ public class DataCache {
       
       int curIdx = random.nextInt( numInstances );
       newWeights[curIdx] += instWeights[curIdx];
-//      result.instances.get(curIdx).setWeight(newWeights[curIdx]);
       if ( !result.inBag[curIdx] ) {
         result.numInBag++;
         result.inBag[curIdx] = true;
@@ -283,39 +273,10 @@ public class DataCache {
     //    - For newWeights[] ~ 18540 ns
     //    - For instances.get(_).weight() ~ 72177 ns
 
-    // we also need to fill sortedIndices by peeking into the inBag array, but
-    // this can be postponed until the tree training begins
+    // we also need to fill sortedIndices by peeking into the inBag array
     // we will use the "createInBagSortedIndices()" for this
 
     return result;
-
-  }
-
-  
-
-  /** Invoked only when tree is trained. */
-  protected void createInBagSortedIndices() {
-
-    int[][] newSortedIndices = new int[ numAttributes ][ ];
-    
-    for (int a = 0; a < numAttributes; a++) {
-      
-      if (a == classIndex)
-        continue;      
-      
-      newSortedIndices[a] = new int[this.numInBag];
-      
-      int inBagIdx = 0;
-      for (int i = 0; i < sortedIndices[a].length; i++) {
-        int origIdx = sortedIndices[a][i];
-        if ( !this.inBag[origIdx] )
-          continue;
-        newSortedIndices[a][inBagIdx] = sortedIndices[a][i];
-        inBagIdx++;
-      }
-    }    
-    
-    this.sortedIndices = newSortedIndices;
 
   }
 
