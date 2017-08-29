@@ -73,6 +73,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   protected DataCache myData;
   protected boolean[][] inBag;
   protected Random random;
+  protected ExecutorService threadPool;
 
   /**
    * for serialization
@@ -129,7 +130,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     inBag = new boolean[m_Classifiers.length][];
 
     // thread management
-    ExecutorService threadPool = Executors.newFixedThreadPool(
+    threadPool = Executors.newFixedThreadPool(
       numThreads > 0 ? numThreads : Runtime.getRuntime().availableProcessors());
     List<Future<?>> futures = new ArrayList<Future<?>>(m_Classifiers.length);
 
@@ -158,21 +159,22 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       }
 
       //calc feature importances
-      m_FeatureImportances = null;
       if (getComputeImportances()) {
-        computeImportances(threadPool);
+        computeImportances();
       }
 
       // The new way to compute the feature importance
       if (getComputeImportancesNew()) {
-        computeImportancesNew(threadPool);
+        computeImportancesNew();
       }
 
       if (m_computeInteractions) {
-        computeInteractions(threadPool);
+        computeInteractions();
       }
 
-      // TODO Implementar tambe importance and interactions basats en maximal subtrees
+      if (m_computeInteractionsNew) {
+        computeInteractionsNew();
+      }
 
       threadPool.shutdown();
 
@@ -191,9 +193,8 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    *
    * @return the oob error
    */
-  private double computeOOBError(Instances data,
-                                 boolean[][] inBag,
-                                 ExecutorService threadPool) throws InterruptedException, ExecutionException {
+  private double computeOOBError(Instances data, boolean[][] inBag, ExecutorService threadPool)
+          throws InterruptedException, ExecutionException {
 
     boolean numeric = data.classAttribute().isNumeric();
 
@@ -203,7 +204,6 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       VotesCollector aCollector = new VotesCollector(m_Classifiers, i, data, inBag);
       votes.add(threadPool.submit(aCollector));
     }
-
 
     double outOfBagCount = 0.0;
     double errorSum = 0.0;
@@ -220,9 +220,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
         if (vote != data.instance(i).classValue())
           errorSum += data.instance(i).weight();
       }
-
     }
-
     return errorSum / outOfBagCount;
   }
 
@@ -239,9 +237,8 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    *
    * @return the oob error
    */
-  private double computeOOBError(DataCache data,
-                                 boolean[][] inBag,
-                                 ExecutorService threadPool, Classifier[] classifiers) throws InterruptedException, ExecutionException {
+  private double computeOOBError(DataCache data, boolean[][] inBag, ExecutorService threadPool,
+                                 Classifier[] classifiers) throws InterruptedException, ExecutionException {
 
 
     List<Future<Double>> votes =
@@ -262,66 +259,35 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       if ( (int) vote != data.instClassValues[i] ) {
         errorSum += data.instWeights[i];
       }
-
     }
-
-    return errorSum / outOfBagCount;
-    
-  }
-
-  /**
-   * Compute the out-of-bag error on the instances in a DataCache. This must
-   * be the datacache used for training the FastRandomForest (this is not
-   * checked in the function!).
-   *
-   * @param data       the instances (as a DataCache)
-   * @param inBag      numTrees x numInstances indicating out-of-bag instances
-   *
-   * @return the oob error
-   */
-  private double computeOOBErrorSeq(DataCache data,
-                                 boolean[][] inBag,
-                                 Classifier[] classifiers) {
-
-    double outOfBagCount = 0.0;
-    double errorSum = 0.0;
-
-    for (int i = 0; i < data.numInstances; i++) {
-      double vote = VotesCollectorDataCache.execute(classifiers, i, data, inBag);
-      // error for instance
-      outOfBagCount += data.instWeights[i];
-      if ( (int) vote != data.instClassValues[i] ) {
-        errorSum += data.instWeights[i];
-      }
-    }
-
     return errorSum / outOfBagCount;
   }
   
-  
-  
-  
-  ////////////////////////////
-  // Feature importances stuff
-  ////////////////////////////
+  ///////////////////////////////
+  // Feature importances stuff //
+  ///////////////////////////////
 
-  /**
-   * The value of the features importances.
-   */
+  /** The value of the features importances. */
   private double[] m_FeatureImportances;
-  /**
-   * Whether compute the importances or not.
-   */
+  /** Whether compute the importances or not. */
   private boolean m_computeImportances = false;
 
+  /** The value of the features importances new. */
   private double[] m_FeatureImportancesNew;
+  /** Whether compute the features importances new. */
   private boolean m_computeImportancesNew = false;
 
+  /** The value of the interactions. */
   private double[][] m_Interactions;
+  /** Whether compute the interactions. */
   private boolean m_computeInteractions = false;
 
+  /** The value of the interactions new. */
   private double[][] m_InteractionsNew;
+  /** Whether compute the interactions new. */
   private boolean m_computeInteractionsNew = false;
+
+  // PUBLIC METHODS IMPORTANCES //
 
   /**
    * @return compute feature importances?
@@ -341,8 +307,19 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    * @return unnormalized feature importances
    */
   public double[] getFeatureImportances() {
+    if (m_FeatureImportances == null) {
+      try {
+        computeImportances();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
     return m_FeatureImportances;
   }
+
+  // PUBLIC METHODS IMPORTANCES NEW //
 
   /**
    * @return compute feature importances new?
@@ -352,28 +329,83 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   }
 
   /**
-   * @param computeImportances compute feature importances new?
+   * @param computeImportancesNew compute feature importances new?
    */
-  public void setComputeImportancesNew(boolean computeImportances) {
-    m_computeImportancesNew = computeImportances;
+  public void setComputeImportancesNew(boolean computeImportancesNew) {
+    m_computeImportancesNew = computeImportancesNew;
   }
 
   /**
    * @return unnormalized feature importances new
    */
   public double[] getFeatureImportancesNew() {
+    if (m_FeatureImportancesNew == null) {
+      try {
+        computeImportancesNew();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
     return m_FeatureImportancesNew;
   }
-  
-  /** Used when displaying feature importances. */
-  //private String[] m_FeatureNames; 
-  
-  /** Available only if feature importances have been computed. */
-  //public String[] getFeatureNames() {
-  //  return m_FeatureNames;
-  //}
 
-  public void computeImportances(ExecutorService threadPool) throws ExecutionException, InterruptedException {
+  // PUBLIC METHODS INTERACTIONS //
+
+  public boolean getComputeInteractions() {
+    return m_computeInteractions;
+  }
+
+  public void setComputeInteractions(boolean computeInteractions) {
+    m_computeInteractions = computeInteractions;
+  }
+
+  public double[][] getInteractions() {
+    if (m_Interactions == null) {
+      try {
+        computeInteractions();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    return m_Interactions;
+  }
+
+  // PUBLIC METHODS INTERACTIONS NEW //
+
+  public boolean getComputeInteractionsNew() {
+    return m_computeInteractionsNew;
+  }
+
+  public void setComputeInteractionsNew(boolean computeInteractionsNew) {
+    m_computeInteractionsNew = computeInteractionsNew;
+  }
+
+  public double[][] getInteractionsNew() {
+    if (m_InteractionsNew == null) {
+      try {
+        computeInteractionsNew();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    return m_InteractionsNew;
+  }
+
+  // PRIVATE METHODS FOR IMPORTANCE AND INTERACTIONS //
+
+  /**
+   * Compute feature importance shuffling each attribute and comparing the error of the dataset with this attribute
+   * shuffled and the original dataset. The result is stored in m_FeatureImportances.
+   * @throws ExecutionException
+   * @throws InterruptedException
+   */
+  private void computeImportances() throws ExecutionException, InterruptedException {
     m_FeatureImportances = new double[myData.numAttributes];
     // TODO Potser s'haurien d'agafar nomes els arbres que continguin l'atribut en questio
     // es una tonteria agafar tots els altres
@@ -387,7 +419,13 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     }
   }
 
-  public void computeImportancesNew(ExecutorService threadPool) throws ExecutionException, InterruptedException {
+  /**
+   * Compute feature importance comparing the error of the trees that have a certain attribute vs the trees that
+   * don't have this attribute. This can be done because each tree has been built using a subset of attributes.
+   * @throws ExecutionException
+   * @throws InterruptedException
+   */
+  private void computeImportancesNew() throws ExecutionException, InterruptedException {
     m_FeatureImportancesNew = new double[myData.numAttributes];
     for (int j = 0; j < myData.numAttributes; ++j) {
       if (myData.classIndex == j) {
@@ -426,14 +464,14 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     }
   }
 
-  public void computeInteractions(ExecutorService threadPool) throws ExecutionException, InterruptedException {
+  private void computeInteractions() throws ExecutionException, InterruptedException {
     // initialize matrix
     m_Interactions = new double[myData.numAttributes][];
     for (int i = 0; i < myData.numAttributes; ++i) {
       m_Interactions[i] = new double[myData.numAttributes];
     }
     // compute importances
-    computeImportances(threadPool);
+    computeImportances();
     // compute interactions
     // TODO Tampoc cal agafar tots els abres, nomes aquells que tenen els atributs "i" i "j"
     for (int i = 0; i < myData.numAttributes; ++i) {
@@ -451,7 +489,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     }
   }
 
-  public void computeInteractionsNew(ExecutorService threadPool) throws ExecutionException, InterruptedException {
+  private void computeInteractionsNew() throws ExecutionException, InterruptedException {
     // initialize matrix
     m_InteractionsNew = new double[myData.numAttributes][];
     for (int i = 0; i < myData.numAttributes; ++i) {
@@ -511,11 +549,10 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       }
     }
   }
-  
 
-  ////////////////////////////
-  // /Feature importances stuff
-  ////////////////////////////
+  ///////////////////////////////
+  // Feature importances stuff //
+  ///////////////////////////////
 
   /**
    * Not supported.

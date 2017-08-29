@@ -82,6 +82,21 @@ import java.util.Vector;
  *  The maximum depth of the trees, 0 for unlimited.
  *  (default 0)</pre>
  * <p/>
+ * <pre> -numFeatTree &lt;num&gt;
+ *  Number of features selected for each tree.</pre>
+ * <p/>
+ * <pre> -import
+ *  Compute and output RF feature importances (slow).</pre>
+ * <p/>
+ * <pre> -importNew
+ *  Compute and output RF feature importances using the new version (slow).</pre>
+ * <p/>
+ * <pre> -interactions
+ *  Compute and output RF interactions (very slow).</pre>
+ * <p/>
+ * <pre> -interactionsNew
+ *  Compute and output RF interactions using the new version (very slow).</pre>
+ * <p/>
  * <pre> -D
  *  If set, classifier is run in debug mode and
  *  may output additional info to the console</pre>
@@ -103,12 +118,10 @@ public class FastRandomForest
   /** Number of trees in forest. */
   protected int m_numTrees = 100;
 
-  /**
-   * Number of features to consider in random feature selection.
-   * If less than 1 will use int(logM+1) )
-   */
+  /** Number of features to consider in random feature selection. If less than 1 will use int(logM+1) ) */
   protected int m_numFeatNode = 0;
 
+  /** Number of features selected to construct a tree */
   protected int m_numFeatTree = 0;
 
   /** The random seed. */
@@ -340,46 +353,11 @@ public class FastRandomForest
   private boolean m_computeInteractions = false;
 
   /**
-   * @return compute feature importances?
+   * Whether to compute the interactions or not using the new method.
    */
-  public boolean getComputeImportances() {
-    return m_computeImportances;
-  }
+  private boolean m_computeInteractionsNew = false;
 
-  /**
-   * @param computeImportances compute feature importances?
-   */
-  public void setComputeImportances(boolean computeImportances) {
-    m_computeImportances = computeImportances;
-  }
 
-  /**
-   * @return compute feature importances new?
-   */
-  public boolean getComputeImportancesNew() {
-    return m_computeImportancesNew;
-  }
-
-  /**
-   * @param computeImportances compute feature importances?
-   */
-  public void setComputeImportancesNew(boolean computeImportances) {
-    m_computeImportancesNew = computeImportances;
-  }
-
-  /**
-   * @return compute feature importances new?
-   */
-  public boolean getComputeInteractions() {
-    return m_computeInteractions;
-  }
-
-  /**
-   * @param computeInteractions compute feature importances?
-   */
-  public void setComputeInteractions(boolean computeInteractions) {
-    m_computeInteractions = computeInteractions;
-  }
 
   
 
@@ -549,7 +527,10 @@ public class FastRandomForest
    *  Compute and output RF feature importances using the new version (slow).</pre>
    * <p/>
    * <pre> -interactions
-   *  Compute and output RF interactions.</pre>
+   *  Compute and output RF interactions (very slow).</pre>
+   * <p/>
+   * <pre> -interactionsNew
+   *  Compute and output RF interactions using the new version (very slow).</pre>
    * <p/>
    * <pre> -D
    *  If set, classifier is run in debug mode and
@@ -610,6 +591,7 @@ public class FastRandomForest
     setComputeImportances(Utils.getFlag("import", options));
     setComputeImportancesNew(Utils.getFlag("importNew", options));
     setComputeInteractions(Utils.getFlag("interactions", options));
+    setComputeInteractionsNew(Utils.getFlag("interactionsNew", options));
 
     super.setOptions(options);
 
@@ -682,6 +664,13 @@ public class FastRandomForest
       // a minimum of 20 trees without a specific attribute
       m_numFeatTree = Math.min((m_numTrees - minTrees)*data.numAttributes()/m_numTrees, m_numFeatTree);
     }
+    // Modify m_numFeatTree if we compute interactions new
+    if (this.getComputeInteractionsNew()) {
+      // a minimum of 40 trees
+      m_numTrees = Math.max(40, m_numTrees);
+      // half of the trees with a specific attribute
+      m_numFeatTree = (m_numTrees/2)*data.numAttributes()/m_numTrees + 1;
+    }
 
     FastRandomTree rTree = new FastRandomTree();
     rTree.m_MotherForest = this; // allows to retrieve KValue and MaxDepth
@@ -695,6 +684,8 @@ public class FastRandomForest
     m_bagger.setCalcOutOfBag(true);
     m_bagger.setComputeImportances( this.getComputeImportances() );
     m_bagger.setComputeImportancesNew(this.getComputeImportancesNew());
+    m_bagger.setComputeInteractions(this.getComputeInteractions());
+    m_bagger.setComputeInteractionsNew(this.getComputeInteractionsNew());
 
     m_bagger.buildClassifier(data, m_NumThreads, this);
     
@@ -751,19 +742,6 @@ public class FastRandomForest
     return sb.toString();
   }
 
-  /**
-   * Main method for this class.
-   *
-   * @param argv the options
-   */
-  public static void main(String[] argv){
-    runClassifier(new FastRandomForest(), argv);
-  }
-
-  public String getRevision(){
-    return RevisionUtils.extract("$Revision: 0.99$");
-  }
-
   ////////////////////////////
   // Feature importances stuff
   ////////////////////////////
@@ -778,12 +756,85 @@ public class FastRandomForest
   }
 
   public double[][] getInteractions() {
-    return null;
+    return m_bagger.getInteractions();
+  }
+
+  public double[][] getInteractionsNew() {
+    return m_bagger.getInteractionsNew();
+  }
+
+  /**
+   * @return compute feature importances?
+   */
+  public boolean getComputeImportances() {
+    return m_computeImportances;
+  }
+
+  /**
+   * @param computeImportances compute feature importances?
+   */
+  public void setComputeImportances(boolean computeImportances) {
+    m_computeImportances = computeImportances;
+  }
+
+  /**
+   * @return compute feature importances new?
+   */
+  public boolean getComputeImportancesNew() {
+    return m_computeImportancesNew;
+  }
+
+  /**
+   * @param computeImportances compute feature importances?
+   */
+  public void setComputeImportancesNew(boolean computeImportances) {
+    m_computeImportancesNew = computeImportances;
+  }
+
+  /**
+   * @return compute interactions?
+   */
+  public boolean getComputeInteractions() {
+    return m_computeInteractions;
+  }
+
+  /**
+   * @param computeInteractions compute interactions?
+   */
+  public void setComputeInteractions(boolean computeInteractions) {
+    m_computeInteractions = computeInteractions;
+  }
+
+  /**
+   * @return compute interactions new?
+   */
+  public boolean getComputeInteractionsNew() {
+    return m_computeInteractionsNew;
+  }
+
+  /**
+   * @param computeInteractionsNew compute interactions?
+   */
+  public void setComputeInteractionsNew(boolean computeInteractionsNew) {
+    m_computeInteractionsNew = computeInteractionsNew;
   }
 
   ////////////////////////////
   // /Feature importances stuff
   ////////////////////////////
+
+  /**
+   * Main method for this class.
+   *
+   * @param argv the options
+   */
+  public static void main(String[] argv){
+    runClassifier(new FastRandomForest(), argv);
+  }
+
+  public String getRevision(){
+    return RevisionUtils.extract("$Revision: 0.99$");
+  }
 
 }
 
