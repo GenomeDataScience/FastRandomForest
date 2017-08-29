@@ -651,12 +651,10 @@ class FastRandomTree
       bestAttIdx = attIndex;
       
       if ( Double.isNaN(prior) ) { // needs to be computed only once per branch - is same for all attributes (even regardless of missing values)
-        prior = SplitCriteria.entropyOverColumns(dist);
-//        prior = SplitCriteria.giniOverColumns(dist);
+        prior = SplitCriteria.giniOverColumns(dist);
       }
       
-      double negPosterior = - SplitCriteria.entropyConditionedOnRows(dist);  // this is an updated dist
-//      double negPosterior = - SplitCriteria.giniConditionedOnRows(dist);  // this is an updated dist
+      double negPosterior = - SplitCriteria.giniConditionedOnRows(dist);  // this is an updated dist
       if ( negPosterior > bestNegPosterior ) {
         bestNegPosterior = negPosterior;
       } else {
@@ -974,8 +972,7 @@ class FastRandomTree
         for (i = 0; i < data.numClasses; ++i) {
           currDist[1][i] -= levelsClasses[0][i];
         }
-        double currVal = -SplitCriteria.entropyConditionedOnRows(currDist);; // current value of splitting criterion
-//        double currVal = -SplitCriteria.giniConditionedOnRows(currDist);; // current value of splitting criterion
+        double currVal = -SplitCriteria.giniConditionedOnRows(currDist);; // current value of splitting criterion
         double bestVal = currVal; // best value of splitting criterion
 
         for ( int lvl = 1; lvl < numLvls; lvl++ ) {
@@ -987,8 +984,7 @@ class FastRandomTree
           }
 
           // we filled the "dist" for the current level, find score and see if we like it
-          currVal = -SplitCriteria.entropyConditionedOnRows(currDist);
-//          currVal = -SplitCriteria.giniConditionedOnRows(currDist);
+          currVal = -SplitCriteria.giniConditionedOnRows(currDist);
           if ( currVal > bestVal ) {
             bestVal = currVal;
             bestLvl = lvl;
@@ -1050,8 +1046,7 @@ class FastRandomTree
 
         // do not allow splitting between two instances with the same class or with the same value
         if (data.instClassValues[prevInst] != data.instClassValues[inst] && data.vals[attToExamine][inst] > data.vals[attToExamine][prevInst] ) {
-          currVal = -SplitCriteria.entropyConditionedOnRows(currDist);
-//          currVal = -SplitCriteria.giniConditionedOnRows(currDist);
+          currVal = -SplitCriteria.giniConditionedOnRows(currDist);
           if (currVal > bestVal) {
             bestVal = currVal;
             bestI = i;
@@ -1101,8 +1096,7 @@ class FastRandomTree
     // entropy (because this changes after redistributing the instances with
     // missing values in the current attribute). Also, for categorical variables
     // it was not calculated before.
-    double curScore = -SplitCriteria.entropyConditionedOnRows(dist);
-//    double curScore = -SplitCriteria.giniConditionedOnRows(dist);
+    double curScore = -SplitCriteria.giniConditionedOnRows(dist);
     if ( curScore > scoreBestAtt && splitPoint > -Double.MAX_VALUE ) {  // overwrite the "distsBestAtt" and "propsBestAtt" with current values
       copyDists(dist, distsBestAtt);
       System.arraycopy( props, 0, propsBestAtt, 0, props.length );

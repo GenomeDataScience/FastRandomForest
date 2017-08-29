@@ -69,15 +69,16 @@ public class SplitCriteria {
 
   public static double giniConditionedOnRows(double[][] matrix) {
 
-    double returnValue = 0, sumForBranch;
+    double returnValue = 0, sumForBranch, auxSum;
 
     for (int branchNum = 0; branchNum < matrix.length; branchNum++) {
-      sumForBranch = 0;
-      for (int classNum = 0; classNum < matrix[0].length; classNum++) {
-        returnValue -= matrix[branchNum][classNum] * matrix[branchNum][classNum];
+      auxSum = matrix[branchNum][0] * matrix[branchNum][0];
+      sumForBranch = matrix[branchNum][0];
+      for (int classNum = 1; classNum < matrix[0].length; classNum++) {
+        auxSum += matrix[branchNum][classNum] * matrix[branchNum][classNum];
         sumForBranch += matrix[branchNum][classNum];
       }
-      returnValue += sumForBranch * sumForBranch;
+      returnValue += sumForBranch - auxSum/sumForBranch;
     }
 
     return returnValue;
@@ -118,18 +119,18 @@ public class SplitCriteria {
 
   public static double giniOverColumns(double[][] matrix) {
 
-    double returnValue = 0, sumForColumn, total = 0;
+    double auxSum = 0, sumForColumn, total = 0;
 
     for (int j = 0; j < matrix[0].length; j++) {
-      sumForColumn = 0;
-      for (int i = 0; i < matrix.length; i++) {
+      sumForColumn = matrix[0][j];
+      for (int i = 1; i < matrix.length; i++) {
         sumForColumn += matrix[i][j];
       }
-      returnValue -= sumForColumn * sumForColumn;
+      auxSum += sumForColumn * sumForColumn;
       total += sumForColumn;
     }
 
-    return returnValue + total*total;
+    return total - auxSum/total;
   }
 
   

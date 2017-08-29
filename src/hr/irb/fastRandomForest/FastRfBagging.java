@@ -451,8 +451,65 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     }
   }
 
-  public void computeInteractionsNew(ExecutorService threadPool) {
-    // error dels abres que tenen "i" i "j" - error dels arbres que tenen "i" o bé "j"
+  public void computeInteractionsNew(ExecutorService threadPool) throws ExecutionException, InterruptedException {
+    // initialize matrix
+    m_InteractionsNew = new double[myData.numAttributes][];
+    for (int i = 0; i < myData.numAttributes; ++i) {
+      m_InteractionsNew[i] = new double[myData.numAttributes];
+    }
+    // compute interactions
+    for (int i = 0; i < myData.numAttributes; ++i) {
+      if (i == myData.classIndex) continue;
+      for (int j = i+1; j < myData.numAttributes; ++j) {
+        if (j == myData.classIndex) continue;
+        // Compute the indices of the trees
+        ArrayList<Integer> indicesTreesWithI = new ArrayList<>();
+        ArrayList<Integer> indicesTreesWithJ = new ArrayList<>();
+        ArrayList<Integer> indicesTreesWithIJ = new ArrayList<>();
+        ArrayList<Integer> indicesTreesWithoutIJ = new ArrayList<>();
+        for (int k = 0; k < m_Classifiers.length; ++k) {
+          FastRandomTree frt = (FastRandomTree) m_Classifiers[k];
+          if (frt.subsetSelectedAttr.contains(i) && frt.subsetSelectedAttr.contains(j)) indicesTreesWithIJ.add(k);
+          else if (frt.subsetSelectedAttr.contains(i)) indicesTreesWithI.add(k);
+          else if (frt.subsetSelectedAttr.contains(j)) indicesTreesWithJ.add(k);
+          else indicesTreesWithoutIJ.add(k);
+        }
+        // Take the FastRandomTrees and its inBag array for I
+        boolean[][] inBagWithI = new boolean[indicesTreesWithI.size()][];
+        Classifier[] classifiersWithI = new Classifier[indicesTreesWithI.size()];
+        for (int k = 0; k < indicesTreesWithI.size(); ++k) {
+          inBagWithI[k] = inBag[indicesTreesWithI.get(k)];
+          classifiersWithI[k] = m_Classifiers[indicesTreesWithI.get(k)];
+        }
+        // Take the FastRandomTrees and its inBag array for J
+        boolean[][] inBagWithJ = new boolean[indicesTreesWithJ.size()][];
+        Classifier[] classifiersWithJ = new Classifier[indicesTreesWithJ.size()];
+        for (int k = 0; k < indicesTreesWithJ.size(); ++k) {
+          inBagWithJ[k] = inBag[indicesTreesWithJ.get(k)];
+          classifiersWithJ[k] = m_Classifiers[indicesTreesWithJ.get(k)];
+        }
+        // Take the FastRandomTrees and its inBag array for IJ
+        boolean[][] inBagWithIJ = new boolean[indicesTreesWithIJ.size()][];
+        Classifier[] classifiersWithIJ = new Classifier[indicesTreesWithIJ.size()];
+        for (int k = 0; k < indicesTreesWithIJ.size(); ++k) {
+          inBagWithIJ[k] = inBag[indicesTreesWithIJ.get(k)];
+          classifiersWithIJ[k] = m_Classifiers[indicesTreesWithIJ.get(k)];
+        }
+        // Take the FastRandomTrees and its inBag array for without IJ
+        boolean[][] inBagWithoutIJ = new boolean[indicesTreesWithoutIJ.size()][];
+        Classifier[] classifiersWithoutIJ = new Classifier[indicesTreesWithoutIJ.size()];
+        for (int k = 0; k < indicesTreesWithoutIJ.size(); ++k) {
+          inBagWithoutIJ[k] = inBag[indicesTreesWithoutIJ.get(k)];
+          classifiersWithoutIJ[k] = m_Classifiers[indicesTreesWithoutIJ.get(k)];
+        }
+        double errorWithI = computeOOBError(myData, inBagWithI, threadPool, classifiersWithI);
+        double errorWithJ = computeOOBError(myData, inBagWithJ, threadPool, classifiersWithJ);
+        double errorWithIJ = computeOOBError(myData, inBagWithIJ, threadPool, classifiersWithIJ);
+        double errorWithoutIJ = computeOOBError(myData, inBagWithoutIJ, threadPool, classifiersWithoutIJ);
+        m_InteractionsNew[i][j] = (errorWithoutIJ - errorWithIJ) - (errorWithoutIJ - errorWithI) - (errorWithoutIJ - errorWithJ);
+        m_InteractionsNew[j][i] = m_InteractionsNew[i][j];
+      }
+    }
   }
   
 
