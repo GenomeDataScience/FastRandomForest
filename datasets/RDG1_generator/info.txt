@@ -1,0 +1,2 @@
+String[] options = new String[]{"-o", path + "\\dtSet1_" + n_inst + "_" + n_feat + ".arff",
+                    "-S", "" + System.currentTimeMillis()%50, "-n", "" + n_inst, "-a", "" + n_feat, "-c", "2", "-N", ""+ n_feat};

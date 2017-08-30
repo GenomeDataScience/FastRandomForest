@@ -746,6 +746,8 @@ public class FastRandomForest
   // Feature importances stuff
   ////////////////////////////
 
+  // TODO Show warning or error while calling these methods without a suitable number of feature per tree
+
   /** @return the feature importances or <code>null</code> if the importances haven't been computed */
   public double[] getFeatureImportances(){
     return m_bagger.getFeatureImportances();

@@ -1,0 +1,3 @@
+String[] options = new String[]{"-o", path + "\\dtSet4_" + n_inst + "_" + n_feat + ".arff",
+"-S", "" + System.nanoTime()%50, "-n", "" + n_inst, "-N", "" + n_feat, "-C", "2", "-A", "" + (n_feat*2)};
+DataGenerator.runDataGenerator(new BayesNet(), options);

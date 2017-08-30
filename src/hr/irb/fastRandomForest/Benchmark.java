@@ -36,17 +36,17 @@ import java.util.Random;
  * Runs 10 iterations of 10-fold crossvalidation on the supplied arff file(s)
  * using weka.classifiers.trees.RandomForest, and FastRandomForest, and prints
  * accuracy, AUC (averaged over all classes) and computation time to stdout.
- * 
+ *
  * As first command-line parameter, supply an arff file, a directory name, or
  * a text file with list of arff datasets.
- * 
+ *
  * As second command-line parameter, supply the number of trees in the forests.
  * (-I parameter for the classifiers).
  *
  * As third command-line parameter, supply a comma separated list of number of
  * threads to use, eg. "1,2,4". If ommited, default value is assumed (autodetect
  * number of cores in machine).
- * 
+ *
  * @author Fran Supek (fran.supek[AT]irb.hr)
  */
 public class Benchmark {
@@ -69,8 +69,7 @@ public class Benchmark {
 
   public static void main(String[] args) throws Exception {
 
-    List<File> trainFiles =
-            getMatchingFiles(args[0], ".arff");
+    List<File> trainFiles = getMatchingFiles(args[0], ".arff");
 
     List<Integer> threadNums = new ArrayList<Integer>();
     if ( args.length < 3 ) {
@@ -89,11 +88,11 @@ public class Benchmark {
 
       classifiers[i] = new weka.classifiers.trees.RandomForest();
       classifiers[i].setOptions(new String[]{"-I", args[1],
-        "-num-slots", Integer.toString(threadNums.get(i)) });
-      
+              "-num-slots", Integer.toString(threadNums.get(i)) });
+
       classifiers[i+1] = new hr.irb.fastRandomForest.FastRandomForest();
-      classifiers[i+1].setOptions(new String[]{"-I", args[1], // "-import",
-        "-threads", Integer.toString(threadNums.get(i))}); // , "-importNew"
+      classifiers[i+1].setOptions(new String[]{"-I", args[1],
+              "-threads", Integer.toString(threadNums.get(i))});
       // , "-interactions", "-interactionsNew", "-import", "-importNew"
     }
 
@@ -119,22 +118,18 @@ public class Benchmark {
         data.setClassIndex(data.numAttributes() - 1);
       data.deleteWithMissingClass();
 
-      //FastRandomForest frf = new FastRandomForest();
-      //frf.setNumTrees(10); frf.setMaxDepth(5);
-      //frf.buildClassifier(data);
-      
       // count numeric and nominal attributes
       int numNumeric = 0, numNominal = 0;
       for (int i = 0; i < data.numAttributes(); i++) {
         if ( data.classIndex()==i )
           continue;
-        if ( data.attribute(i).isNominal() ) 
+        if ( data.attribute(i).isNominal() )
           numNominal++;
-        if ( data.attribute(i).isNumeric() ) 
+        if ( data.attribute(i).isNumeric() )
           numNumeric++;
       }
       System.err.printf( "%s\t%d\t%d\t%d\t%d\t", curArff.getName(), data.numInstances(), numNumeric, numNominal, data.numClasses() );
-     
+
 
       /* We have adopted a generalization of AUC score to multiclass problems as
        * described in Provost and Domingos (CeDER Working Paper #IS-00-04, Stern
@@ -154,7 +149,7 @@ public class Benchmark {
       for (int curRun = 1; curRun <= numRuns; curRun++) {
         Benchmark.myTime = 0;
 
-        s = new StringBuilder(); 
+        s = new StringBuilder();
 
         for (int curCfr = 0; curCfr < classifiers.length; curCfr++ ) {
 
@@ -192,7 +187,7 @@ public class Benchmark {
         } // classifier by classifier
 
         System.err.print(s.toString());
-        
+
       } // run by run
 
       // write the information (dataset, execTime, accy...) for each file in a StringBuilder
@@ -211,7 +206,7 @@ public class Benchmark {
       strResultsFRF.append("" + curArff.getName() + ", " + data.numInstances() + ", " + numNumeric + ", " + numNominal +
               ", " + data.numClasses() + ", " + sumAccyFRF/numRuns + ", " + sumTimeFRF/numRuns + '\n');
 
-      // the t-test for accuracy is always performed only between classifier 0 and classifier 1 
+      // the t-test for accuracy is always performed only between classifier 0 and classifier 1
       // meaning, the first instance of Weka RF and first instance of FastRF
       // the following instances use a different # of threads but that doesn't affect results
       double testTrainRatio = 1 / (double) (numFolds - 1);
@@ -226,21 +221,21 @@ public class Benchmark {
       pscTime.calculateDerived();
 
       System.err.printf( Locale.US, "| Statistical significance of difference in mean of " +
-              "AUC scores is p=%6.4f (%s wins), " +
-              "in accuracy is p=%6.4f (%s wins). " +
-              " Average speedup is: %4.2f times.\n",
+                      "AUC scores is p=%6.4f (%s wins), " +
+                      "in accuracy is p=%6.4f (%s wins). " +
+                      " Average speedup is: %4.2f times.\n",
               pscAuc.differencesProbability, getTextForSignificance( pscAuc.differencesSignificance, "WekaRF", "FastRF" ),
               pscAccy.differencesProbability, getTextForSignificance( pscAccy.differencesSignificance, "WekaRF", "FastRF" ),
               pscTime.xStats.mean / pscTime.yStats.mean
-              );
+      );
     } // arff by arff
 
     // write the results (that are in two StringBuilders) in a .csv file
     try{
-      PrintWriter writerWeka = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsWeka_datasetArt48.csv", "UTF-8");
+      PrintWriter writerWeka = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsWeka_1.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter("C:\\Users\\jpique\\Desktop\\results\\resultsFRF_datasetArt67.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_1.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (IOException e) {
@@ -250,12 +245,12 @@ public class Benchmark {
 //    Runtime.getRuntime().exec("shutdown -s");
   }
 
-  
+
 
   /**
    * When supplied with a directory name, returns an ArrayList with all the
    * files inside that directory that have the specified extension.
-   *  
+   *
    * When supplied with a single filename...
    * (a) if the extension matches the specified extension, returs an
    *     ArrayList with a single File object inside.
@@ -309,17 +304,17 @@ public class Benchmark {
     return result;
   }
 
-  
+
   private static String getTextForSignificance( int significanceFlag, String party1, String party2 ) {
-    
-    if ( significanceFlag == 0 ) 
+
+    if ( significanceFlag == 0 )
       return "noone";
     else if ( significanceFlag > 0 )
       return party1;
     else
       return party2;
-    
+
   }
-  
+
 
 }
