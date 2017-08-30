@@ -30,6 +30,7 @@ import weka.core.TechnicalInformation.Type;
 
 import java.util.Enumeration;
 import java.util.Vector;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Based on the "weka.classifiers.trees.RandomForest" class, revision 1.12,
@@ -117,6 +118,12 @@ public class FastRandomForest
 
   /** Number of trees in forest. */
   protected int m_numTrees = 100;
+
+  /** Minimum expected number of trees with a given features */
+  protected int minTrees = 20;
+
+  /** Number of attributes in the dataset */
+  protected int m_numAttributes;
 
   /** Number of features to consider in random feature selection. If less than 1 will use int(logM+1) ) */
   protected int m_numFeatNode = 0;
@@ -616,7 +623,7 @@ public class FastRandomForest
    *
    * @throws Exception if something goes wrong
    */
-  public void buildClassifier(Instances data) throws Exception{
+  public void buildClassifier(Instances data) throws Exception {
 
     // can classifier handle the data?
     getCapabilities().testWithFail(data);
@@ -644,6 +651,8 @@ public class FastRandomForest
 
     m_bagger = new FastRfBagging();
 
+    m_numAttributes = data.numAttributes();
+
     // Set up the tree options which are held in the motherForest.
     m_KValue = m_numFeatNode;
     if(m_KValue > data.numAttributes() - 1) m_KValue = data.numAttributes() - 1;
@@ -656,7 +665,6 @@ public class FastRandomForest
     }
     // Modify m_numFeatTree if we compute feature importance new
     if (this.getComputeImportancesNew()) {
-      int minTrees = 20;
       // a minimum of 40 trees
       m_numTrees = Math.max(minTrees*2, m_numTrees);
       // a minimum of 20 trees with a specific attribute
@@ -731,7 +739,14 @@ public class FastRandomForest
         + "\n");
       if ( getComputeImportances() ) {
         sb.append("Feature importances - increase in out-of-bag error (as % misclassified instances) after feature permuted:\n");
-        double[] importances = m_bagger.getFeatureImportances();
+        double[] importances = new double[0];
+        try {
+          importances = m_bagger.getFeatureImportances();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         for ( int i = 0; i < importances.length; i++ ) {
           sb.append( String.format( "%d\t%s\t%6.4f%%\n", i+1, this.m_Info.attribute(i).name(),
                   i==m_Info.classIndex() ? Double.NaN : importances[i]*100.0 ) ); //bagger.getFeatureNames()[i] );
@@ -749,19 +764,25 @@ public class FastRandomForest
   // TODO Show warning or error while calling these methods without a suitable number of feature per tree
 
   /** @return the feature importances or <code>null</code> if the importances haven't been computed */
-  public double[] getFeatureImportances(){
+  public double[] getFeatureImportances() throws ExecutionException, InterruptedException {
     return m_bagger.getFeatureImportances();
   }
 
-  public double[] getFeatureImportancesNew() {
+  public double[] getFeatureImportancesNew() throws Exception {
+    if (m_numFeatTree < minTrees*m_numAttributes/m_numTrees + 1) {
+      throw new Exception("A given attribute appers in less than " + minTrees + " trees");
+    }
+    if (m_numFeatTree > (m_numTrees - minTrees)*m_numAttributes/m_numTrees) {
+      throw new Exception("A given attribute appers in more than " + (m_numTrees - minTrees) + " trees");
+    }
     return m_bagger.getFeatureImportancesNew();
   }
 
-  public double[][] getInteractions() {
+  public double[][] getInteractions() throws ExecutionException, InterruptedException {
     return m_bagger.getInteractions();
   }
 
-  public double[][] getInteractionsNew() {
+  public double[][] getInteractionsNew() throws ExecutionException, InterruptedException {
     return m_bagger.getInteractionsNew();
   }
 

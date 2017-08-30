@@ -306,15 +306,9 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   /**
    * @return unnormalized feature importances
    */
-  public double[] getFeatureImportances() {
+  public double[] getFeatureImportances() throws ExecutionException, InterruptedException {
     if (m_FeatureImportances == null) {
-      try {
-        computeImportances();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+      computeImportances();
     }
     return m_FeatureImportances;
   }
@@ -338,15 +332,9 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   /**
    * @return unnormalized feature importances new
    */
-  public double[] getFeatureImportancesNew() {
+  public double[] getFeatureImportancesNew() throws ExecutionException, InterruptedException {
     if (m_FeatureImportancesNew == null) {
-      try {
-        computeImportancesNew();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+      computeImportancesNew();
     }
     return m_FeatureImportancesNew;
   }
@@ -361,15 +349,9 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     m_computeInteractions = computeInteractions;
   }
 
-  public double[][] getInteractions() {
+  public double[][] getInteractions() throws ExecutionException, InterruptedException {
     if (m_Interactions == null) {
-      try {
-        computeInteractions();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+      computeInteractions();
     }
     return m_Interactions;
   }
@@ -384,15 +366,9 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
     m_computeInteractionsNew = computeInteractionsNew;
   }
 
-  public double[][] getInteractionsNew() {
+  public double[][] getInteractionsNew() throws ExecutionException, InterruptedException {
     if (m_InteractionsNew == null) {
-      try {
-        computeInteractionsNew();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+      computeInteractionsNew();
     }
     return m_InteractionsNew;
   }
