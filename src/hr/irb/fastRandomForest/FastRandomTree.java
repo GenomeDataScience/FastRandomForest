@@ -111,6 +111,7 @@ class FastRandomTree
   /**
    * This constructor should not be used. Instead, use the next two constructors
    */
+  @Deprecated
   public FastRandomTree() {
   }
 
