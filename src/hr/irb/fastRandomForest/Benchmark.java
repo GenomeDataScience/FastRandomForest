@@ -55,18 +55,6 @@ public class Benchmark {
 
   public static final int numFolds = 10;
 
-  private static long myTime = 0;
-
-  private static int numNodes = 0;
-
-  public static synchronized void updateTime (long elapsedTime) {
-    myTime += elapsedTime;
-  }
-
-  public static synchronized void updateNumNodes (int nNodes) {
-    numNodes += nNodes;
-  }
-
   public static void main(String[] args) throws Exception {
 
     List<File> trainFiles = getMatchingFiles(args[0], ".arff");
@@ -147,7 +135,6 @@ public class Benchmark {
       double[][] timeScore = new double[classifiers.length][numRuns];
 
       for (int curRun = 1; curRun <= numRuns; curRun++) {
-        Benchmark.myTime = 0;
 
         s = new StringBuilder();
 
@@ -176,11 +163,9 @@ public class Benchmark {
           accyScore[curCfr][curRun-1] = eval.pctCorrect();
           timeScore[curCfr][curRun-1] = elapsedTime;
 
-          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t%6d\t",
+          s.append(String.format( Locale.US, "%02d|%02d\t%.5f\t%.2f\t%6d\t",
                   curCfr, curRun, aucSum / sumClassProps,
-                  eval.pctCorrect(), elapsedTime, myTime)); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)    Utils.log2(numNodes/(500.0 * numFolds))
-          numNodes = 0;
-          myTime = 0;
+                  eval.pctCorrect(), elapsedTime)); // , myTime/(8*1000000)   , numNodes/(500.0 * numFolds)    Utils.log2(numNodes/(500.0 * numFolds))
 
           System.gc();
 
