@@ -33,6 +33,8 @@ For farther explanations and details of the project you can visit the
 
 # How to use it
 
+You need to add the Weka library and the FastRandomForest_1.0.jar file in your project in order to use FastRandomForest.
+
 The following code shows how to create a Random Forest from a dataset and how to make predictions based on that 
 forest.
 
