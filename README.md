@@ -2,6 +2,7 @@
 
 FastRandomForest is a re-implementation of the [Random Forest](https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm) 
 classifier (RF) for the Weka environment that brings speed and memory use improvements over the original Weka RF.
+It is specially efficient with datasets with a huge number of features.
 
 This new version has a different approach. Each tree doesn't have all the features in the dataset, but it has
 only a subset of this features. This trick reduces dramatically the execution time in datasets where there are
@@ -24,6 +25,9 @@ the accuracy. However, a deep analysis of the behaviour of the forest when varyi
 needed. We believe that these parameters can be modified in order to improve more the execution time and the
 accuracy.
 
+If you want to see the comparison of the accuracy and execution time between FRF_1.0, FRF_0.99 and the RF Weka you can
+go to the [results](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results) page.
+
 For farther explanations and details of the project you can visit the 
 [project wiki](https://github.com/jordipiqueselles/FastRandomForest/wiki).
 
@@ -36,23 +40,26 @@ forest.
 // Remember that this code can throw exceptions
 
 // Loading the instances
-DataSource source = new DataSource("/some/where/data.arff");
+ConverterUtils.DataSource source = new ConverterUtils.DataSource("/some/where/data.arff");
 Instances data = source.getDataSet();
+if (data.classIndex() == -1) {
+    data.setClassIndex(data.numAttributes() - 1);
+}
 
 // Creating the forest
 FastRandomForest fastRandomForest = new FastRandomForest();
 fastRandomForest.setOptions(new String[]{"-I", "500"}); // 500 trees
-fastRandomForest.buildClassifier();
+fastRandomForest.buildClassifier(data);
 
 // Getting the OOB error
-double error = fastRandomforest.measureOutOfBagError();
+double error = fastRandomForest.measureOutOfBagError();
 
 // Getting the prediction of the first instance (the probability that belongs to a certain class)
 Instance firstInstance = data.get(0);
-double[] prediction = fastRandomforest.distributionForInstance(firstInstance);
+double[] prediction = fastRandomForest.distributionForInstance(firstInstance);
 ```
 
-In case you have a dataset in CSV format, you can you the following code.
+In case you have a dataset in CSV format, you can use the following code.
 
 ```java
 CSVLoader loader = new CSVLoader();

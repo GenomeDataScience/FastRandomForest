@@ -125,16 +125,13 @@ public class FastRandomForest
   /** Number of attributes in the dataset */
   protected int m_numAttributes;
 
-  /** Number of features to consider in random feature selection. If less than 1 will use int(logM+1) ) */
-  protected int m_numFeatNode = 0;
-
   /** Number of features selected to construct a tree */
   protected int m_numFeatTree = 0;
 
   /** The random seed. */
   protected int m_randomSeed = 1;
 
-  /** Final number of features that were considered in last build. */
+  /** Number of features to consider in random feature selection. If less than 1 will use int(logM+1) ) */
   protected int m_KValue = 0;
 
   /** Number of simultaneous threads to use in computation (0 = autodetect). */
@@ -235,7 +232,7 @@ public class FastRandomForest
    */
   public int getNumFeatures(){
 
-    return m_numFeatNode;
+    return m_KValue;
   }
 
   /**
@@ -245,7 +242,7 @@ public class FastRandomForest
    */
   public void setNumFeatures(int newNumFeatures){
 
-    m_numFeatNode = newNumFeatures;
+    m_KValue = newNumFeatures;
   }
 
   /**
@@ -561,9 +558,9 @@ public class FastRandomForest
 
     tmpStr = Utils.getOption('K', options);
     if ( tmpStr.length() != 0 ) {
-      m_numFeatNode = Integer.parseInt(tmpStr);
+      m_KValue = Integer.parseInt(tmpStr);
     } else {
-      m_numFeatNode = 0;
+      m_KValue = 0;
     }
 
     tmpStr = Utils.getOption('S', options);
@@ -654,7 +651,6 @@ public class FastRandomForest
     m_numAttributes = data.numAttributes();
 
     // Set up the tree options which are held in the motherForest.
-    m_KValue = m_numFeatNode;
     if(m_KValue > data.numAttributes() - 1) m_KValue = data.numAttributes() - 1;
     if(m_KValue < 1) m_KValue = (int)Utils.log2(data.numAttributes()) + 5;
 
