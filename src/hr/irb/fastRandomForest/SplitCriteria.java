@@ -30,7 +30,8 @@ package hr.irb.fastRandomForest;
  * 
  * @author Eibe Frank (eibe@cs.waikato.ac.nz) - original code
  * @author Fran Supek (fran.supek[AT]irb.hr) - adapted code
- * @version 0.9
+ * @author Jordi Pique (1.0 version)
+ * @version 1.0
  */
 public class SplitCriteria {
   

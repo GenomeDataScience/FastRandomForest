@@ -65,7 +65,8 @@ import java.util.concurrent.*;
  * @author Len Trigg (len@reeltwo.com) - original code
  * @author Richard Kirkby (rkirkby@cs.waikato.ac.nz) - original code
  * @author Fran Supek (fran.supek[AT]irb.hr) - adapted code
- * @version $Revision: 0.99$
+ * @author Jordi Pique (1.0 version)
+ * @version $Revision: 1.0$
  */
 class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   implements WeightedInstancesHandler, AdditionalMeasureProducer {
@@ -407,7 +408,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       if (myData.classIndex == j) {
         continue; // it doesn't make sense to calculate feature importance for the class attribute
       }
-      // Compute the indices of the trees that contain or not the attribute "j"
+      // Compute the indices of the trees that contain and the trees that don't contain the attribute "j"
       ArrayList<Integer> indicesTreesWithAttr = new ArrayList<>();
       ArrayList<Integer> indicesTreesWithoutAttr = new ArrayList<>();
       for (int k = 0; k < m_Classifiers.length; ++k) {

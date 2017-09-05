@@ -223,8 +223,8 @@ public class Benchmark {
       PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_1.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
-    } catch (IOException e) {
-      // do something
+    } catch (Exception e) {
+//      Runtime.getRuntime().exec("shutdown -s");
     }
 
 //    Runtime.getRuntime().exec("shutdown -s");

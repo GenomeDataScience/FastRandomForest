@@ -106,7 +106,8 @@ import java.util.concurrent.ExecutionException;
  *
  * @author Richard Kirkby (rkirkby@cs.waikato.ac.nz) - original code
  * @author Fran Supek (fran.supek[AT]irb.hr) - adapted code
- * @version $Revision: 0.99$
+ * @author Jordi Pique (1.0 version)
+ * @version $Revision: 1.0$
  */
 public class FastRandomForest
   extends AbstractClassifier
