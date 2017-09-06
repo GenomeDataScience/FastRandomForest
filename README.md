@@ -20,7 +20,7 @@ number of attributes analysed in each node (`m_KValue`) and the number of attrib
 (`m_numFeatTree`). Two generators from Weka, the RDG1 and the BayesNet, were used to generate datasets with
 different number of instances (from 100 to 25600) and different number of attributes (from 100 to 25600).
 The values that were found are `m_KValue = log2(numAttributes) + 5` and 
-`m_numFeatTree = sqrt(numAttributes*2) + 60`. These values give us a better execution time without compromising
+`m_numFeatTree = pow(numAttributes, 0.6) + 60`. These values give us a better execution time without compromising
 the accuracy. However, a deep analysis of the behaviour of the forest when varying these two parameters is
 needed. We believe that these parameters can be modified in order to improve more the execution time and the
 accuracy.
