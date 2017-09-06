@@ -655,7 +655,7 @@ public class FastRandomForest
     if(m_KValue > data.numAttributes() - 1) m_KValue = data.numAttributes() - 1;
     if(m_KValue < 1) m_KValue = (int)Utils.log2(data.numAttributes()) + 5;
 
-    if(m_numFeatTree < 1) m_numFeatTree = (int) Math.sqrt(data.numAttributes()*2) + 60;
+    if(m_numFeatTree < 1) m_numFeatTree = (int) Math.pow(data.numAttributes(), 0.6) + 60; //(int) Math.sqrt(data.numAttributes()*2) + 60;
     if(m_numFeatTree >= data.numAttributes()) {
       m_numFeatTree = data.numAttributes() - 1;
       m_KValue = (int)Utils.log2(data.numAttributes()) + 1;

@@ -31,6 +31,10 @@ go to the [results](https://github.com/jordipiqueselles/FastRandomForest/wiki/Re
 For farther explanations and details of the project you can visit the 
 [project wiki](https://github.com/jordipiqueselles/FastRandomForest/wiki).
 
+If you wont to visit the old repository of FastRandomForest you can follow this link:
+
+[https://code.google.com/archive/p/fast-random-forest/](https://code.google.com/archive/p/fast-random-forest/)
+
 # How to use it
 
 You need to add the Weka library and the FastRandomForest_1.0.jar file in your project in order to use FastRandomForest.

@@ -576,20 +576,20 @@ class FastRandomTree
       } else {
         throw new IllegalArgumentException("Very strange!");
       }
-      
+
       val = prior - (-negPosterior); // we want the greatest reduction in entropy
       if ( val > 1e-2 ) {            // we allow some leeway here to compensate
         sensibleSplitFound = true;   // for imprecision in entropy computation
       }
-      
+
     }  // feature by feature in window
 
-    
-    if ( sensibleSplitFound ) { 
+
+    if ( sensibleSplitFound ) {
 
       m_Attribute = bestAttIdx;   // find best attribute
-      m_SplitPoint = split; 
-      m_Prop = prop; 
+      m_SplitPoint = split;
+      m_Prop = prop;
       prop = null; // can be GC'ed
 
 //      long t = System.nanoTime();
@@ -623,11 +623,11 @@ class FastRandomTree
         m_Successors[i] = auxTree;
       }
       sortedIndices = null;
-      
+
     } else { // ------ make leaf --------
 
       m_Attribute = -1;
-      
+
       // normalize by dividing with the number of instances (as of ver. 0.97)
       // unless leaf is empty - this can happen with splits on nominal attributes
       if ( sortedIndicesLength != 0 )
@@ -657,13 +657,13 @@ class FastRandomTree
     }
   }
 
-  
+
   /**
    * Splits instances into subsets; new for FastRF 0.99. Does not create new
-   * arrays with split indices, but rather reorganizes the indices within the 
+   * arrays with split indices, but rather reorganizes the indices within the
    * supplied sortedIndices to conform with the split. Works only within given
    * boundaries. <p>
-   * 
+   *
    * Note: as of 0.99, all splits (incl. categorical) are always binary.
    *
    * @param att the attribute index

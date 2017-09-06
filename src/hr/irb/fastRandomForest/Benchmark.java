@@ -75,7 +75,7 @@ public class Benchmark {
     for ( int i = 0; i < threadNums.size() * 2; i += 2 ) {
 
       classifiers[i] = new weka.classifiers.trees.RandomForest();
-      classifiers[i].setOptions(new String[]{"-I", args[1],
+      classifiers[i].setOptions(new String[]{"-I", "1",
               "-num-slots", Integer.toString(threadNums.get(i)) });
 
       classifiers[i+1] = new hr.irb.fastRandomForest.FastRandomForest();
@@ -220,14 +220,14 @@ public class Benchmark {
       PrintWriter writerWeka = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsWeka_1.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_1.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_3.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (Exception e) {
-//      Runtime.getRuntime().exec("shutdown -s");
+      Runtime.getRuntime().exec("shutdown -s");
     }
 
-//    Runtime.getRuntime().exec("shutdown -s");
+    Runtime.getRuntime().exec("shutdown -s");
   }
 
 
