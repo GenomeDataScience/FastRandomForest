@@ -81,7 +81,7 @@ you can follow this link:
 
 The folder **datasets** contains the datasets used for analysing the algorithm.
 
-The folder **results** contains CSV files with the execution time and accuracy of the Weka version, 
+The folder **results** contains and Excel file with the execution time and accuracy of the Weka version, 
 the FRF 0.99 version and this new last version of FRF (1.0).
 
 The folder **src/hr/irb/src** contains the source code of the project.
