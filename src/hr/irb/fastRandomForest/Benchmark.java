@@ -75,7 +75,7 @@ public class Benchmark {
     for ( int i = 0; i < threadNums.size() * 2; i += 2 ) {
 
       classifiers[i] = new weka.classifiers.trees.RandomForest();
-      classifiers[i].setOptions(new String[]{"-I", "1",
+      classifiers[i].setOptions(new String[]{"-I", args[1],
               "-num-slots", Integer.toString(threadNums.get(i)) });
 
       classifiers[i+1] = new hr.irb.fastRandomForest.FastRandomForest();
@@ -92,8 +92,8 @@ public class Benchmark {
     s.append("\tsummary");
     System.err.println(s.toString());
 
-    StringBuilder strResultsWeka = new StringBuilder("name, numInstances, numNumeric, numNominal, numClasses, accuracy, time\n");
-    StringBuilder strResultsFRF = new StringBuilder("name, numInstances, numNumeric, numNominal, numClasses, accuracy, time\n");
+    StringBuilder strResultsWeka = new StringBuilder("name, numInst, numNumeric, numNominal, numClasses, acc_W, time_W, auc_W\n");
+    StringBuilder strResultsFRF = new StringBuilder("name, numInst, numNumeric, numNominal, numClasses, acc_FRF, time_FRF, auc_FRF\n");
 
     int idxFile = 1;
     for (File curArff : trainFiles) {
@@ -180,16 +180,20 @@ public class Benchmark {
       double sumTimeWeka = 0;
       double sumAccyFRF = 0;
       double sumTimeFRF = 0;
+      double sumAucWeka = 0;
+      double sumAucFRF = 0;
       for (int i = 0; i < numRuns; ++i) {
         sumAccyWeka += accyScore[0][i];
         sumTimeWeka += timeScore[0][i];
+        sumAucWeka += aucScore[0][i];
         sumAccyFRF += accyScore[1][i];
         sumTimeFRF += timeScore[1][i];
+        sumAucFRF += aucScore[1][i];
       }
       strResultsWeka.append("" + curArff.getName() + ", " + data.numInstances() + ", " + numNumeric + ", " + numNominal +
-              ", " + data.numClasses() + ", " + sumAccyWeka/numRuns + ", " + sumTimeWeka/numRuns + '\n');
+              ", " + data.numClasses() + ", " + sumAccyWeka/numRuns + ", " + sumTimeWeka/numRuns + ", " + sumAucWeka/numRuns + '\n');
       strResultsFRF.append("" + curArff.getName() + ", " + data.numInstances() + ", " + numNumeric + ", " + numNominal +
-              ", " + data.numClasses() + ", " + sumAccyFRF/numRuns + ", " + sumTimeFRF/numRuns + '\n');
+              ", " + data.numClasses() + ", " + sumAccyFRF/numRuns + ", " + sumTimeFRF/numRuns + ", " + sumAucFRF/numRuns + '\n');
 
       // the t-test for accuracy is always performed only between classifier 0 and classifier 1
       // meaning, the first instance of Weka RF and first instance of FastRF
@@ -217,17 +221,17 @@ public class Benchmark {
 
     // write the results (that are in two StringBuilders) in a .csv file
     try{
-      PrintWriter writerWeka = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsWeka_1.csv", "UTF-8");
+      PrintWriter writerWeka = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsWeka_4.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_3.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_4.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (Exception e) {
-      Runtime.getRuntime().exec("shutdown -s");
+//      Runtime.getRuntime().exec("shutdown -s");
     }
 
-    Runtime.getRuntime().exec("shutdown -s");
+//    Runtime.getRuntime().exec("shutdown -s");
   }
 
 
