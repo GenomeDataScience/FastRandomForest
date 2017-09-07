@@ -7,7 +7,7 @@ FastRF 2.0b was developed by [Jordi Piqué Sellés](https://www.linkedin.com/in/
 
 
 ## How does it work?
-In the FastRF 2 algorithm each tree is built from a subset of attributes from the entire dataset.  In comparison, in the standard RF, individual nodes are constructed using subsets of attributes, but there are no tree-wise constraints.  An improvement in execution time using this trick can be substantial: average 2.41-fold improvement over Weka RF across 33 tested real-world datasets of intermediate to large size; 2.76-fold and 6.20-fold for synthetic datasets based on the RDG1 and BayesNet generators, respectively. More details on [speed benchmarks wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results). 
+In the FastRF 2 algorithm each tree is built from a subset of attributes from the entire dataset.  In comparison, in the standard RF, individual nodes are constructed using subsets of attributes, but there are no tree-wise constraints.  An improvement in execution time using this trick can be substantial: **average 2.41-fold speed improvement over Weka RF** across 33 tested real-world datasets of intermediate to large size; 2.76-fold and 6.20-fold for synthetic datasets based on the RDG1 and BayesNet generators, respectively. More details on [speed benchmarks wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results). 
 
 Overall, we find that use of the FastRF 2.0 algorithmic trick retains the classification accuracy of the original Weka RF and FastRF 0.99 implementation.  One possible explanation for this is that sub-sampling attributes per tree helps decorrelate the predictions of the individual trees, which is a desirable property in an ensemble classifier.  Of note, for individual datasets the accuracy may vary in either direction - please see the [accuracy benchmarks wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results).
 
@@ -15,11 +15,11 @@ Overall, we find that use of the FastRF 2.0 algorithmic trick retains the classi
 
 FastRF 2 brings large benefits in speed (and to some extent memory use) over Weka RF with datasets that have:
 *	A large number of instances
-*	A lot of numeric features or a lot of binary categorical features
-*	Missing values
+*	A lot of numeric attributes or a lot of binary categorical attributes
+*	Attributes with missing values
 
-FastRF 2 is less beneficial (or in extreme cases detrimental) compared to Weka RF when datasets have:
-*	A lot of multi-categorical features with ≥5 categories
+FastRF 2 is less beneficial, or in extreme cases detrimental compared to Weka RF when datasets have:
+*	A lot of multi-categorical attributes with ≥5 categories
 *	Datasets stored in sparse format are not handled at all by FastRF
 *	Regression is not yet implemented in FastRF 2.0 beta
 
@@ -31,7 +31,7 @@ Generally, the larger the dataset, the larger the gain in speed of FastRF 2.0 ov
 As with all RF implementations, FastRF 2.0beta is reasonably robust to choice of parameters.  More trees are generally desirable.  A user should not need to change the values of default values of `m_Kvalue` and `m_numFeatTree` parameters that control the number of features considered per node and per tree; these defaults may change in future FastRF versions. Details on the [Parameters FastRF wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Parameters).
 
 ### A caveat. 
-Rarely, on some datasets, the class probabilities (predictions for each instance) in FastRF 2.0 beta might have a differently shaped distribution compared to FastRF 0.99 and to Weka RF. That means that the use of the default 50% probability cutoff for calling the positive or negative class may result in different predictions across many instances (possibly increasing or decreasing the % correctly classified instances; see benchmarks page). Importantly, the AUC score changes very little, meaning that the classifiers overall have similar discrimination power. Bear in mind that the 50% cutoff might in some datasets not mean the same thing in FastRF 2.0beta as it does in Weka RF. We are working to better understand this; see [Future work Wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Future-work) for other issues of interest.
+Rarely, on some datasets, the class probabilities (predictions for each instance) in FastRF 2.0 beta might have a differently shaped distribution compared to Weka RF. That means that the use of the default 50% probability cutoff for calling the positive or negative class may result in different predictions across many instances (possibly increasing or decreasing the % correctly classified instances; see benchmarks page). Importantly, the AUC score remains similar, meaning that the classifiers overall have similar discrimination power. Bear in mind that the 50% cutoff might in some datasets not mean the same thing in FastRF 2.0beta as it does in Weka RF. We are working to better understand this; see [Future work Wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Future-work) for other issues of interest.
 
 ## Future perspectives.
 The algorithmic trick that FastRF 2.0 employs enables a novel type of attribute importance measure to be computed, called it the _dropout importance_ (named by a distant analogy to the dropout trick used in deep learning). In such a forest where some trees are guaranteed not to have a particular attribute, we can compute the attribute importance analysing the out-of-bag (OOB) error of the trees that had access to this particular attribute versus the OOB error of the trees that did not have access this attribute.  
