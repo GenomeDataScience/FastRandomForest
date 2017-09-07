@@ -11,7 +11,7 @@ In the FastRF 2 algorithm each tree is built from a subset of attributes from th
 
 Overall, we find that use of the FastRF 2.0 algorithmic trick retains the classification accuracy of the original Weka RF and FastRF 0.99 implementation.  One possible explanation for this is that sub-sampling attributes per tree helps decorrelate the predictions of the individual trees, which is a desirable property in an ensemble classifier.  Of note, for individual datasets the accuracy may vary in either direction - please see the [accuracy benchmarks wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results).
 
-## When is it helpful?
+## When is FastRF helpful?
 
 FastRF 2 brings large benefits in speed (and to some extent memory use) over Weka RF with datasets that have:
 *	A large number of instances
