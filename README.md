@@ -1,46 +1,50 @@
-# FastRandomForest
+# FastRandomForest 2.0 beta
 
-FastRandomForest is a re-implementation of the [Random Forest](https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm) 
-classifier (RF) for the Weka environment that brings speed and memory use improvements over the original Weka RF.
-It is specially efficient with datasets with a huge number of features.
+FastRandomForest is a re-implementation of the [Random Forest](https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm) classifier (RF) for the Weka machine learning environment. FastRF brings speed and memory use improvements over the original Weka RF, particulary for datasets with large numbers number of features or instances.
 
-This new version has a different approach. Each tree doesn't have all the features in the dataset, but it has
-only a subset of this features. This trick reduces dramatically the execution time in datasets where there are
-a lot of different attributes. However, someone could think that the accuracy is lower. The fact is the accuracy
-is practically the same as in the last version of FRF (FRF 0.99) and the latest version of the Weka implementation
-of RF. That's because we have also increased a little bit the number of attributes analyzed in each node to
-make the split.
+The current version, FastRF 2.0 beta, employs a particular algorithmic trick to improve efficiency over the standard Random Forest algorithm (as implemented in the previous FastRF 0.99 or as in Weka RF), while retaining the accuracy of predictions.
+FastRF 2.0b was developed by [Jordi Piqué Sellés](https://www.linkedin.com/in/jordi-piqu%C3%A9-sell%C3%A9s-8b84baa5/) at the [Genome Data Science lab](https://www.irbbarcelona.org/en/research/genome-data-science) of the IRB Barcelona. The code is a much-improved version of [FastRF 0.99](https://code.google.com/archive/p/fast-random-forest/) (by Fran Supek), which is itself loosely based on the RF implementation in Weka 3.6.
 
-That trick also opens a new door for computing feature importance and feature interaction. In a forest where
-each tree doesn't have all the attributes, we can compute the feature importance analysing the OOB error of 
-the trees that have a specific feature vs the OOB error of the trees that doesn't have this feature.
 
-One of the major challenges of that new implementation of Random Forest was choosing a suitable value for the
-number of attributes analysed in each node (`m_KValue`) and the number of attributes for each tree 
-(`m_numFeatTree`). Two generators from Weka, the RDG1 and the BayesNet, were used to generate datasets with
-different number of instances (from 100 to 25600) and different number of attributes (from 100 to 25600).
-The values that were found are `m_KValue = log2(numAttributes) + 5` and 
-`m_numFeatTree = pow(numAttributes, 0.6) + 60`. These values give us a better execution time without compromising
-the accuracy. However, a deep analysis of the behaviour of the forest when varying these two parameters is
-needed. We believe that these parameters can be modified in order to improve more the execution time and the
-accuracy.
+## How does it work?
+In the FastRF 2 algorithm each tree is built from a subset of attributes from the entire dataset.  In comparison, in the standard RF, individual nodes are constructed using subsets of attributes, but there are no tree-wise constraints.  An improvement in execution time using this trick can be substantial: average 2.41-fold improvement over Weka RF across 33 tested real-world datasets of intermediate to large size; 2.76-fold and 6.20-fold for synthetic datasets based on the RDG1 and BayesNet generators, respectively. More details on [speed benchmarks wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results). 
 
-If you want to see the comparison of the accuracy and execution time between FRF_1.0, FRF_0.99 and the RF Weka you can
-go to the [results](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results) page.
+Overall, we find that use of the FastRF 2.0 algorithmic trick retains the classification accuracy of the original Weka RF and FastRF 0.99 implementation.  One possible explanation for this is that sub-sampling attributes per tree helps decorrelate the predictions of the individual trees, which is a desirable property in an ensemble classifier.  Of note, for individual datasets the accuracy may vary in either direction - please see the [accuracy benchmarks wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Results).
 
-For farther explanations and details of the project you can visit the 
-[project wiki](https://github.com/jordipiqueselles/FastRandomForest/wiki).
+## When is it helpful?
 
-If you wont to visit the old repository of FastRandomForest you can follow this link:
+FastRF 2 brings large benefits in speed (and to some extent memory use) over Weka RF with datasets that have:
+*	A large number of instances
+*	A lot of numeric features or a lot of binary categorical features
+*	Missing values
 
-[https://code.google.com/archive/p/fast-random-forest/](https://code.google.com/archive/p/fast-random-forest/)
+FastRF 2 is less beneficial (or in extreme cases detrimental) compared to Weka RF when datasets have:
+*	A lot of multi-categorical features with ≥5 categories
+*	Datasets stored in sparse format are not handled at all by FastRF
+*	Regression is not yet implemented in FastRF 2.0 beta
 
-# How to use it
+Generally, the larger the dataset, the larger the gain in speed of FastRF 2.0 over the standard Weka RF.
 
-You need to add the Weka library and the FastRandomForest_1.0.jar file in your project in order to use FastRandomForest.
+## Miscellaneous 
 
-The following code shows how to create a Random Forest from a dataset and how to make predictions based on that 
-forest.
+### Parameter choice.
+As with all RF implementations, FastRF 2.0beta is reasonably robust to choice of parameters.  More trees are generally desirable.  A user should not need to change the values of default values of `m_Kvalue` and `m_numFeatTree` parameters that control the number of features considered per node and per tree; these defaults may change in future FastRF versions. Details on the [Parameters FastRF wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Parameters).
+
+### A caveat. 
+Rarely, on some datasets, the class probabilities (predictions for each instance) in FastRF 2.0 beta might have a differently shaped distribution compared to FastRF 0.99 and to Weka RF. That means that the use of the default 50% probability cutoff for calling the positive or negative class may result in different predictions across many instances (possibly increasing or decreasing the % correctly classified instances; see benchmarks page). Importantly, the AUC score changes very little, meaning that the classifiers overall have similar discrimination power. Bear in mind that the 50% cutoff might in some datasets not mean the same thing in FastRF 2.0beta as it does in Weka RF. We are working to better understand this; see [Future work Wiki page](https://github.com/jordipiqueselles/FastRandomForest/wiki/Future-work) for other issues of interest.
+
+## Future perspectives.
+The algorithmic trick that FastRF 2.0 employs enables a novel type of attribute importance measure to be computed, called it the _dropout importance_ (named by a distant analogy to the dropout trick used in deep learning). In such a forest where some trees are guaranteed not to have a particular attribute, we can compute the attribute importance analysing the out-of-bag (OOB) error of the trees that had access to this particular attribute versus the OOB error of the trees that did not have access this attribute.  
+
+Warning -- this _dropout importance_ algorithm is highly experimental and untested.  It is likely to give very different results compared to standard attribute importance measures.  The dropout importance is meant to capture the unique contribution of each feature which cannot be provided by other features, and might therefore be useful in prioritizing causal relationships.
+
+
+# How to use FastRF 2.0 beta
+
+You need to add the Weka library and the FastRandomForest_1.0.jar file to your Java classpath in order to use FastRF 2.0 beta.
+
+The following code shows how to create a Random Forest from a dataset and how to make predictions based on that forest.  This is rather similar to how other Weka classifiers are invoked from Java code; see the [Weka instructions page](http://weka.wikispaces.com/Use+WEKA+in+your+Java+code).
+
 
 ```java
 // Remember that this code can throw exceptions
@@ -73,16 +77,15 @@ loader.setSource(new File("/some/where/data.csv"));
 Instances data = loader.getDataSet();
 ```
 
-For more info and examples about how to use any classifier that extends the Weka's AbstractClassifier class,
-you can follow this link: 
-[http://weka.wikispaces.com/Use+WEKA+in+your+Java+code](http://weka.wikispaces.com/Use+WEKA+in+your+Java+code)
+For more info and examples about how to use any classifier that extends the Weka's AbstractClassifier class, see Weka wiki http://weka.wikispaces.com/Use+WEKA+in+your+Java+code 
+
 
 # Description of the folders
 
 The folder **datasets** contains the datasets used for analysing the algorithm.
 
 The folder **results** contains and Excel file with the execution time and accuracy of the Weka version, 
-the FRF 0.99 version and this new last version of FRF (1.0).
+the FastRF 0.99 version and this new last version of FastRF (2.0 beta).
 
 The folder **src/hr/irb/src** contains the source code of the project.
 
