@@ -77,8 +77,6 @@ loader.setSource(new File("/some/where/data.csv"));
 Instances data = loader.getDataSet();
 ```
 
-For more info and examples about how to use any classifier that extends the Weka's AbstractClassifier class, see Weka wiki http://weka.wikispaces.com/Use+WEKA+in+your+Java+code 
-
 
 # Description of the folders
 
