@@ -46,8 +46,8 @@ import java.util.Random;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz) - original code
  * @author Richard Kirkby (rkirkby@cs.waikato.ac.nz) - original code
  * @author Fran Supek (fran.supek[AT]irb.hr) - adapted code
- * @author Jordi Pique (1.0 version)
- * @version $Revision: 1.0$
+ * @author Jordi Pique (2.0 version)
+ * @version $Revision: 2.0$
  */
 class FastRandomTree
         extends AbstractClassifier
@@ -1061,7 +1061,7 @@ class FastRandomTree
 
   @Override
   public String getRevision() {
-    return RevisionUtils.extract("$Revision: 0.99$");
+    return RevisionUtils.extract("$Revision: 2.0$");
   }
 
 

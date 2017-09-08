@@ -36,7 +36,7 @@ import java.util.Random;
  * bootstrap samples, and seed a random number generator from the stored data.
  * 
  * @author Fran Supek (fran.supek[AT]irb.hr)
- * @author Jordi Pique (1.0 version)
+ * @author Jordi Pique (2.0 version)
  */
 public class DataCache {
 

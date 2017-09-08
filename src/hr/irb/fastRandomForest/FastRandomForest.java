@@ -90,7 +90,7 @@ import java.util.concurrent.ExecutionException;
  *  Compute and output RF feature importances (slow).</pre>
  * <p/>
  * <pre> -importNew
- *  Compute and output RF feature importances using the new version (slow).</pre>
+ *  Compute and output RF dropout importance (slow).</pre>
  * <p/>
  * <pre> -interactions
  *  Compute and output RF interactions (very slow).</pre>
@@ -106,8 +106,8 @@ import java.util.concurrent.ExecutionException;
  *
  * @author Richard Kirkby (rkirkby@cs.waikato.ac.nz) - original code
  * @author Fran Supek (fran.supek[AT]irb.hr) - adapted code
- * @author Jordi Pique (1.0 version)
- * @version $Revision: 1.0$
+ * @author Jordi Pique (2.0 version)
+ * @version $Revision: 2.0$
  */
 public class FastRandomForest
   extends AbstractClassifier
@@ -348,9 +348,9 @@ public class FastRandomForest
   private boolean m_computeImportances = false;
 
   /**
-   * Whether to compute the importances or not using the new method.
+   * Whether to compute the importances or not using dropout importance.
    */
-  private boolean m_computeImportancesNew = false;
+  private boolean m_computeDropoutImportance = false;
 
   /**
    * Whether to compute the interactions or not.
@@ -594,7 +594,7 @@ public class FastRandomForest
     }
 
     setComputeImportances(Utils.getFlag("import", options));
-    setComputeImportancesNew(Utils.getFlag("importNew", options));
+    setComputeDropoutImportance(Utils.getFlag("importNew", options));
     setComputeInteractions(Utils.getFlag("interactions", options));
     setComputeInteractionsNew(Utils.getFlag("interactionsNew", options));
 
@@ -661,7 +661,7 @@ public class FastRandomForest
       m_KValue = (int)Utils.log2(data.numAttributes()) + 1;
     }
     // Modify m_numFeatTree if we compute feature importance new
-    if (this.getComputeImportancesNew()) {
+    if (this.getComputeDropoutImportance()) {
       // a minimum of 40 trees
       m_numTrees = Math.max(minTrees*2, m_numTrees);
       // a minimum of 20 trees with a specific attribute
@@ -688,7 +688,7 @@ public class FastRandomForest
     m_bagger.setNumIterations(m_numTrees);
     m_bagger.setCalcOutOfBag(true);
     m_bagger.setComputeImportances( this.getComputeImportances() );
-    m_bagger.setComputeImportancesNew(this.getComputeImportancesNew());
+    m_bagger.setComputeDropoutImportance(this.getComputeDropoutImportance());
     m_bagger.setComputeInteractions(this.getComputeInteractions());
     m_bagger.setComputeInteractionsNew(this.getComputeInteractionsNew());
 
@@ -765,14 +765,14 @@ public class FastRandomForest
     return m_bagger.getFeatureImportances();
   }
 
-  public double[] getFeatureImportancesNew() throws Exception {
+  public double[] getFeatureDropoutImportance() throws Exception {
     if (m_numFeatTree < minTrees*m_numAttributes/m_numTrees + 1) {
       throw new Exception("A given attribute appers in less than " + minTrees + " trees");
     }
     if (m_numFeatTree > (m_numTrees - minTrees)*m_numAttributes/m_numTrees) {
       throw new Exception("A given attribute appers in more than " + (m_numTrees - minTrees) + " trees");
     }
-    return m_bagger.getFeatureImportancesNew();
+    return m_bagger.getFeatureDropoutImportance();
   }
 
   public double[][] getInteractions() throws ExecutionException, InterruptedException {
@@ -800,15 +800,15 @@ public class FastRandomForest
   /**
    * @return compute feature importances new?
    */
-  public boolean getComputeImportancesNew() {
-    return m_computeImportancesNew;
+  public boolean getComputeDropoutImportance() {
+    return m_computeDropoutImportance;
   }
 
   /**
    * @param computeImportances compute feature importances?
    */
-  public void setComputeImportancesNew(boolean computeImportances) {
-    m_computeImportancesNew = computeImportances;
+  public void setComputeDropoutImportance(boolean computeImportances) {
+    m_computeDropoutImportance = computeImportances;
   }
 
   /**
@@ -853,7 +853,7 @@ public class FastRandomForest
   }
 
   public String getRevision(){
-    return RevisionUtils.extract("$Revision: 0.99$");
+    return RevisionUtils.extract("$Revision: 2.0$");
   }
 
 }

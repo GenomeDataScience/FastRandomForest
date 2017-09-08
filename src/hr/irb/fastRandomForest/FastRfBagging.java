@@ -65,8 +65,8 @@ import java.util.concurrent.*;
  * @author Len Trigg (len@reeltwo.com) - original code
  * @author Richard Kirkby (rkirkby@cs.waikato.ac.nz) - original code
  * @author Fran Supek (fran.supek[AT]irb.hr) - adapted code
- * @author Jordi Pique (1.0 version)
- * @version $Revision: 1.0$
+ * @author Jordi Pique (2.0 version)
+ * @version $Revision: 2.0$
  */
 class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   implements WeightedInstancesHandler, AdditionalMeasureProducer {
@@ -165,8 +165,8 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       }
 
       // The new way to compute the feature importance
-      if (getComputeImportancesNew()) {
-        computeImportancesNew();
+      if (getComputeDropoutImportance()) {
+        computeDropoutImportance();
       }
 
       if (m_computeInteractions) {
@@ -273,10 +273,10 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   /** Whether compute the importances or not. */
   private boolean m_computeImportances = false;
 
-  /** The value of the features importances new. */
-  private double[] m_FeatureImportancesNew;
-  /** Whether compute the features importances new. */
-  private boolean m_computeImportancesNew = false;
+  /** The value of the dropout importance. */
+  private double[] m_FeatureDropoutImportance;
+  /** Whether compute the dropout importance. */
+  private boolean m_computeDropoutImportance = false;
 
   /** The value of the interactions. */
   private double[][] m_Interactions;
@@ -317,27 +317,27 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   // PUBLIC METHODS IMPORTANCES NEW //
 
   /**
-   * @return compute feature importances new?
+   * @return compute dropout importance?
    */
-  public boolean getComputeImportancesNew() {
-    return m_computeImportancesNew;
+  public boolean getComputeDropoutImportance() {
+    return m_computeDropoutImportance;
   }
 
   /**
-   * @param computeImportancesNew compute feature importances new?
+   * @param computeDropoutImportance compute dropout importance?
    */
-  public void setComputeImportancesNew(boolean computeImportancesNew) {
-    m_computeImportancesNew = computeImportancesNew;
+  public void setComputeDropoutImportance(boolean computeDropoutImportance) {
+    m_computeDropoutImportance = computeDropoutImportance;
   }
 
   /**
-   * @return unnormalized feature importances new
+   * @return unnormalized dropout importance
    */
-  public double[] getFeatureImportancesNew() throws ExecutionException, InterruptedException {
-    if (m_FeatureImportancesNew == null) {
-      computeImportancesNew();
+  public double[] getFeatureDropoutImportance() throws ExecutionException, InterruptedException {
+    if (m_FeatureDropoutImportance == null) {
+      computeDropoutImportance();
     }
-    return m_FeatureImportancesNew;
+    return m_FeatureDropoutImportance;
   }
 
   // PUBLIC METHODS INTERACTIONS //
@@ -402,8 +402,8 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
    * @throws ExecutionException
    * @throws InterruptedException
    */
-  private void computeImportancesNew() throws ExecutionException, InterruptedException {
-    m_FeatureImportancesNew = new double[myData.numAttributes];
+  private void computeDropoutImportance() throws ExecutionException, InterruptedException {
+    m_FeatureDropoutImportance = new double[myData.numAttributes];
     for (int j = 0; j < myData.numAttributes; ++j) {
       if (myData.classIndex == j) {
         continue; // it doesn't make sense to calculate feature importance for the class attribute
@@ -437,7 +437,7 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
       double errorWithoutAttr = computeOOBError(myData, inBagWithoutAttr, threadPool, classifiersWithoutAttr);
 
       double diff = errorWithoutAttr - errorWithAttr;
-      m_FeatureImportancesNew[j] = diff;
+      m_FeatureDropoutImportance[j] = diff;
     }
   }
 
@@ -870,6 +870,6 @@ class FastRfBagging extends RandomizableIteratedSingleClassifierEnhancer
   }
 
   public String getRevision() {
-    return RevisionUtils.extract("$Revision: 0.99$");
+    return RevisionUtils.extract("$Revision: 2.0$");
   }
 }

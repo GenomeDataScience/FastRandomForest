@@ -221,10 +221,10 @@ public class Benchmark {
 
     // write the results (that are in two StringBuilders) in a .csv file
     try{
-      PrintWriter writerWeka = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsWeka_4.csv", "UTF-8");
+      PrintWriter writerWeka = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsWeka_1.csv", "UTF-8");
       writerWeka.print(strResultsWeka.toString());
       writerWeka.close();
-      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_4.csv", "UTF-8");
+      PrintWriter writerFRF = new PrintWriter(System.getProperty("user.dir") + "\\results\\resultsFRF_1.csv", "UTF-8");
       writerFRF.print(strResultsFRF.toString());
       writerFRF.close();
     } catch (Exception e) {
