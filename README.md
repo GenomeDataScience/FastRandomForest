@@ -1,4 +1,5 @@
-# FastRandomForest 2.0 beta
+FastRandomForest 2.0 beta <img src="logo.png" align="right" />
+========================================================
 
 FastRandomForest is a re-implementation of the [Random Forest](https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm) classifier (RF) for the Weka machine learning environment. FastRF brings speed and memory use improvements over the original Weka RF, particulary for datasets with large numbers number of features or instances.
 
